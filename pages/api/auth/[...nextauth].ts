@@ -1,5 +1,6 @@
-import NextAuth, { AuthOptions } from 'next-auth';
+import NextAuth, { AuthOptions, Session } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
+import { JWT } from 'next-auth/jwt';
 
 export const authOptions: AuthOptions = {
     providers: [
@@ -24,14 +25,14 @@ export const authOptions: AuthOptions = {
         })
     ],
     callbacks: {
-        async jwt({ token, account, profile }) {
+        async jwt({ token, account, profile }): Promise<JWT> {
             if (account) {
                 token.accessToken = account.access_token;
                 token.refreshToken = account.refresh_token;
             }
             return token;
         },
-        async session({ session, token, user }) {
+        async session({ session, token }): Promise<Session> {
             session.accessToken = token.accessToken;
             return session;
         }
