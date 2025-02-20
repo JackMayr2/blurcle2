@@ -27,15 +27,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
-        const query = q || (folderId === 'root'
-            ? "'root' in parents"
-            : `'${folderId}' in parents`);
+        // Construct the query string
+        const queryString = typeof q === 'string' ? q :
+            folderId === 'root' ? "'root' in parents" :
+                `'${folderId}' in parents`;
 
         const response = await drive.files.list({
-            q: query,
             pageSize: 100,
             fields: 'files(id, name, mimeType, parents)',
             orderBy: 'folder,name',
+            q: queryString // Use the properly typed query string
         });
 
         res.status(200).json({ files: response.data.files || [] });
