@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 import { useSession, signIn, signOut } from 'next-auth/react';
 
@@ -20,6 +21,9 @@ export default function Navbar() {
                                     </Link>
                                     <Link href="/district-profile" className="text-gray-700 hover:text-indigo-600 px-3 py-2">
                                         District Profile
+                                    </Link>
+                                    <Link href="/content-creation" className="text-gray-700 hover:text-indigo-600 px-3 py-2">
+                                        Content Creation
                                     </Link>
                                 </>
                             )}
