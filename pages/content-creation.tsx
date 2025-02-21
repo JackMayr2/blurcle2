@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
-import LoadingSpinner from '../components/LoadingSpinner';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 type ContentType = 'newsletter' | 'memo' | 'emergency';
 type InputMode = 'manual' | 'ai';

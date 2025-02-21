@@ -1,8 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { google } from 'googleapis';
-import { authOptions } from './auth/[...nextauth]';
-import { LLMService } from '../../utils/llm';
+import { authOptions } from '@/lib/auth';
+import { LLMService } from '@/utils/llm';
 
 interface GoogleDocInfo {
     title: string;
@@ -25,9 +25,13 @@ async function createGoogleDoc(accessToken: string, content: { title: string; co
         },
     });
 
+    if (!doc.data.documentId) {
+        throw new Error('Failed to create document');
+    }
+
     // Insert the content
     await docs.documents.batchUpdate({
-        documentId: doc.data.documentId,
+        documentId: doc.data.documentId!, // Add non-null assertion
         requestBody: {
             requests: [{
                 insertText: {
@@ -81,12 +85,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
 
                 console.log('Content generated successfully'); // Debug successful generation
-            } catch (error) {
+            } catch (error: any) {
                 console.error('OpenAI error details:', {
-                    name: error.name,
-                    message: error.message,
-                    cause: error.cause,
-                    stack: error.stack
+                    name: error?.name || 'Unknown error',
+                    message: error?.message || 'No error message',
+                    cause: error?.cause,
+                    stack: error?.stack
                 });
                 throw error;
             }
@@ -108,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.error('Google Doc creation error:', error);
             throw error;
         }
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Full error details:', error);
         return res.status(500).json({
             error: 'Failed to generate content',

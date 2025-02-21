@@ -1,9 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
-import { Session } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]';
+import type { Session } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { UserRole, UserTier } from '@/types/auth';
+import type { UserRole, UserTier } from '@/types/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.log('Complete signup - Session:', session);
 
         if (!session?.user?.email) {
-            return res.status(401).json({ error: 'Not authenticated' });
+            return res.status(401).json({ error: 'Not authenticated or missing email' });
         }
 
         const { role, organizationName } = req.body;
@@ -29,12 +29,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const result = await prisma.$transaction(async (tx) => {
             // Update user
             const user = await tx.user.update({
-                where: { email: session.user.email },
+                where: {
+                    email: session.user.email as string // Type assertion since we checked it exists
+                },
                 data: {
                     role,
                     organizationName,
                     onboardingComplete: true,
-                    tier: 'trial',
+                    tier: 'trial' as UserTier,
                     trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days trial
                 },
             });
@@ -44,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const district = await tx.district.create({
                     data: {
                         name: organizationName,
-                        contactEmail: user.email,
+                        contactEmail: user.email || '',
                         contactName: user.name || undefined,
                         userId: user.id,
                     }

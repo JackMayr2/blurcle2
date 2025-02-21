@@ -3,8 +3,8 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/router';
-import type { UserRole } from '../../types/auth';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import type { UserRole } from '@/types/auth';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface ExtendedSession {
     user: {

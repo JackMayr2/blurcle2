@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSession } from 'next-auth/react';
-import LoadingSpinner from '../components/LoadingSpinner';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function Resources() {
     const { data: session, status } = useSession();

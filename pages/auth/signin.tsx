@@ -1,6 +1,7 @@
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function SignIn() {
     const router = useRouter();

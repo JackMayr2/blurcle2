@@ -1,8 +1,8 @@
-import React from 'react';
+'use client';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
-import LoadingSpinner from '../../components/LoadingSpinner';
+import { LoadingSpinner } from '@/components';
 
 interface DistrictInfo {
     id: string;
@@ -27,7 +27,7 @@ interface ExtendedSession {
 }
 
 export default function DistrictProfile() {
-    const { data: session, status } = useSession() as { data: ExtendedSession | null, status: string };
+    const { data: session, status } = useSession();
     const router = useRouter();
     const [district, setDistrict] = useState<DistrictInfo | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -39,11 +39,12 @@ export default function DistrictProfile() {
             return;
         }
 
-        if (status === 'authenticated' && session?.user?.role !== 'district') {
-            router.push('/dashboard');
-            return;
+        if (status === 'authenticated') {
+            setIsLoading(false);
         }
+    }, [status, router]);
 
+    useEffect(() => {
         const fetchDistrictInfo = async () => {
             try {
                 console.log('Fetching district info...');
@@ -69,9 +70,9 @@ export default function DistrictProfile() {
         if (session?.user) {
             fetchDistrictInfo();
         }
-    }, [session, status, router]);
+    }, [session]);
 
-    if (isLoading || status === 'loading') {
+    if (status === 'loading' || isLoading) {
         return <LoadingSpinner />;
     }
 
@@ -86,56 +87,30 @@ export default function DistrictProfile() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div className="px-4 py-5 sm:px-6">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                        District Profile
-                    </h3>
-                    <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                        District information and details
-                    </p>
-                </div>
-                <div className="border-t border-gray-200">
-                    <dl>
-                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">
-                                District Name
-                            </dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                {district?.name || session?.user?.organizationName || 'Not available'}
-                            </dd>
-                        </div>
-                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">
-                                Contact Email
-                            </dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                {district?.contactEmail || session?.user?.email || 'Not available'}
-                            </dd>
-                        </div>
-                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">
-                                Contact Name
-                            </dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                {district?.contactName || session?.user?.name || 'Not available'}
-                            </dd>
-                        </div>
-                        {/* Debug information in development */}
-                        {process.env.NODE_ENV === 'development' && (
-                            <div className="bg-gray-100 px-4 py-5 sm:px-6">
-                                <details>
-                                    <summary className="text-sm font-medium text-gray-500 cursor-pointer">
-                                        Debug Info
-                                    </summary>
-                                    <pre className="mt-2 text-xs text-gray-600 overflow-auto">
-                                        {JSON.stringify({ district, session }, null, 2)}
-                                    </pre>
-                                </details>
+        <div className="min-h-screen bg-gray-50 py-12">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="bg-white rounded-lg shadow px-5 py-6 sm:px-6">
+                    <div className="mb-8">
+                        <h1 className="text-3xl font-bold text-gray-900">
+                            {session?.user?.name || 'District Profile'}
+                        </h1>
+                        <p className="mt-2 text-sm text-gray-600">
+                            Manage your district information and settings
+                        </p>
+                    </div>
+
+                    <div className="border-t border-gray-200 pt-6">
+                        <dl className="divide-y divide-gray-200">
+                            <div className="py-4">
+                                <dt className="text-sm font-medium text-gray-500">Email</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{session?.user?.email}</dd>
                             </div>
-                        )}
-                    </dl>
+                            <div className="py-4">
+                                <dt className="text-sm font-medium text-gray-500">Organization</dt>
+                                <dd className="mt-1 text-sm text-gray-900">{session?.user?.organizationName || 'Not set'}</dd>
+                            </div>
+                        </dl>
+                    </div>
                 </div>
             </div>
         </div>
