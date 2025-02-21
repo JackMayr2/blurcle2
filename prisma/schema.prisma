@@ -1,33 +1,81 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = []
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  refresh_token_expires_in Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model User {
   id                String      @id @default(cuid())
-  email            String      @unique
-  name             String?
-  role             String      // 'district' or 'consultant'
-  tier             String      // 'trial' or 'premium'
-  organizationName String?
-  onboardingComplete Boolean   @default(false)
-  createdAt        DateTime    @default(now())
-  trialEndsAt      DateTime?
-  districts        District[]  // Only used if role is 'consultant'
+  name              String?
+  email             String?     @unique
+  emailVerified     DateTime?
+  image             String?
+  role              String?     // 'district' or 'consultant'
+  tier              String?     // 'trial' or 'premium'
+  organizationName  String?
+  onboardingComplete Boolean    @default(false)
+  createdAt         DateTime    @default(now())
+  trialEndsAt       DateTime?
+  accounts          Account[]
+  sessions          Session[]
+  // For consultants - the districts they manage
+  managedDistricts  District[]  @relation("ConsultantToDistrict")
+  // For district reps - their district
+  district          District?   @relation("UserToDistrict")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
 
 model District {
-  id               String    @id @default(cuid())
-  name             String
-  driveRootFolderId String?
-  contactEmail     String?
-  contactName      String?
-  consultant       User?     @relation(fields: [consultantId], references: [id])
-  consultantId     String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  name         String
+  contactEmail String
+  contactName  String?
+  // The district representative
+  user         User      @relation("UserToDistrict", fields: [userId], references: [id])
+  userId       String    @unique
+  // The consultant managing this district
+  consultant   User?     @relation("ConsultantToDistrict", fields: [consultantId], references: [id])
+  consultantId String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 } 

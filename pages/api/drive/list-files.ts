@@ -2,6 +2,9 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { google } from 'googleapis';
 import { authOptions } from '../auth/[...nextauth]';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -10,8 +13,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const session = await getServerSession(req, res, authOptions);
-        if (!session?.accessToken) {
-            return res.status(401).json({ error: 'Unauthorized' });
+        console.log('Drive API - Session:', session);
+
+        if (!session?.user?.email) {
+            return res.status(401).json({ error: 'Not authenticated' });
+        }
+
+        // Get the user's access token
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email },
+            include: {
+                accounts: {
+                    where: { provider: 'google' },
+                    select: { access_token: true }
+                }
+            }
+        });
+
+        const accessToken = user?.accounts[0]?.access_token;
+        if (!accessToken) {
+            return res.status(401).json({ error: 'No access token found' });
         }
 
         const { folderId = 'root', q = '' } = req.query;
@@ -22,26 +43,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
 
         oauth2Client.setCredentials({
-            access_token: session.accessToken as string
+            access_token: accessToken
         });
 
         const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
-        // Construct the query string
-        const queryString = typeof q === 'string' ? q :
-            folderId === 'root' ? "'root' in parents" :
-                `'${folderId}' in parents`;
-
         const response = await drive.files.list({
-            pageSize: 100,
-            fields: 'files(id, name, mimeType, parents)',
+            q: `'${folderId}' in parents and trashed = false ${q ? `and name contains '${q}'` : ''}`,
+            fields: 'files(id, name, mimeType)',
             orderBy: 'folder,name',
-            q: queryString // Use the properly typed query string
         });
 
-        res.status(200).json({ files: response.data.files || [] });
+        console.log('Drive API Response:', response.data);
+        res.status(200).json(response.data.files || []);
     } catch (error) {
-        console.error('Drive API error:', error);
-        res.status(500).json({ error: 'Failed to fetch files from Google Drive' });
+        console.error('Drive API Error:', error);
+        res.status(500).json({
+            error: 'Failed to list files',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 } 

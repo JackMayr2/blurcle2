@@ -1,6 +1,7 @@
+'use client';
+import React, { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DrivePicker from '../components/DrivePicker';
 
@@ -10,25 +11,73 @@ interface DriveItem {
     mimeType: string;
 }
 
+interface ExtendedSession {
+    user: {
+        name?: string | null;
+        email?: string | null;
+        image?: string | null;
+        id: string;
+        role?: string | null;
+        tier?: string | null;
+        onboardingComplete?: boolean;
+        organizationName?: string | null;
+    };
+}
+
 export default function DistrictProfile() {
-    const { data: session, status } = useSession();
+    const { data: session, status } = useSession() as { data: ExtendedSession | null, status: string };
     const router = useRouter();
     const [showPicker, setShowPicker] = useState(false);
     const [selectedItems, setSelectedItems] = useState<DriveItem[]>([]);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+
+    useEffect(() => {
+        const handleRouteChange = () => {
+            setIsTransitioning(true);
+        };
+
+        router.events.on('routeChangeStart', handleRouteChange);
+        return () => {
+            router.events.off('routeChangeStart', handleRouteChange);
+        };
+    }, [router]);
 
     useEffect(() => {
         if (status === 'unauthenticated') {
-            router.push('/');
+            setIsTransitioning(true);
+            router.replace('/auth/signin');
+            return;
         }
-    }, [status, router]);
+
+        if (status === 'authenticated') {
+            if (!session?.user?.onboardingComplete) {
+                setIsTransitioning(true);
+                router.replace('/auth/signup');
+                return;
+            }
+
+            if (session?.user?.role !== 'district') {
+                setIsTransitioning(true);
+                router.replace('/dashboard');
+                return;
+            }
+        }
+    }, [status, session, router]);
 
     const handleSelection = (items: DriveItem[]) => {
         setSelectedItems(items);
         setShowPicker(false);
     };
 
-    if (status === 'loading') {
-        return <LoadingSpinner />;
+    if (status === 'loading' || isTransitioning) {
+        return (
+            <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center transition-opacity duration-300">
+                <div className="text-center">
+                    <LoadingSpinner className="h-12 w-12" />
+                    <p className="mt-4 text-sm text-gray-600">Loading...</p>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -36,9 +85,11 @@ export default function DistrictProfile() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="bg-white rounded-lg shadow px-5 py-6 sm:px-6">
                     <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900">District Profile</h1>
-                        <p className="mt-2 text-sm text-gray-500">
-                            Select files and folders to connect from Google Drive
+                        <h1 className="text-3xl font-bold text-gray-900">
+                            {session?.user?.organizationName || 'Your District'}
+                        </h1>
+                        <p className="mt-2 text-sm text-gray-600">
+                            Welcome to your district dashboard
                         </p>
                     </div>
 

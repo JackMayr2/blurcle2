@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
+import { UserRole, SubscriptionTier } from '../../types/auth';
 
 interface PricingTier {
     name: string;
@@ -154,8 +155,8 @@ export default function SignUpFlow() {
                                 <button
                                     onClick={() => handleTierSelection(tier.name === 'Free Trial' ? 'trial' : 'premium')}
                                     className={`mt-8 w-full py-3 px-4 rounded-md ${tier.recommended
-                                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                            : 'bg-white text-indigo-600 border-2 border-indigo-600 hover:bg-indigo-50'
+                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                        : 'bg-white text-indigo-600 border-2 border-indigo-600 hover:bg-indigo-50'
                                         }`}
                                 >
                                     {tier.buttonText}

@@ -1,7 +1,14 @@
-export default function LoadingSpinner() {
+'use client';
+import React from 'react';
+
+interface LoadingSpinnerProps {
+    className?: string;
+}
+
+export default function LoadingSpinner({ className = "h-8 w-8" }: LoadingSpinnerProps) {
     return (
-        <div className="flex items-center justify-center min-h-[200px]">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+        <div className="flex justify-center items-center animate-fade-in">
+            <div className={`animate-spin rounded-full border-b-2 border-indigo-600 ${className}`}></div>
         </div>
     );
 } 

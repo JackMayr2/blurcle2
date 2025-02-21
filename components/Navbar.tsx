@@ -1,6 +1,8 @@
+'use client';
 import React from 'react';
 import Link from 'next/link';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import { Menu } from '@headlessui/react';
 
 export default function Navbar() {
     const { data: session } = useSession();
@@ -44,12 +46,37 @@ export default function Navbar() {
                         {session ? (
                             <div className="flex items-center space-x-4">
                                 <img src={session.user?.image!} alt="Profile" className="h-8 w-8 rounded-full ring-2 ring-white" />
-                                <button
-                                    onClick={() => signOut()}
-                                    className="text-white hover:text-blue-200 px-3 py-2 text-sm font-medium"
-                                >
-                                    Sign Out
-                                </button>
+                                <Menu as="div" className="relative ml-3">
+                                    <div>
+                                        <Menu.Button className="bg-white text-indigo-600 px-4 py-2 rounded-md hover:bg-blue-50 text-sm font-medium">
+                                            Settings
+                                        </Menu.Button>
+                                    </div>
+                                    <Menu.Items className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <Link
+                                                    href="/settings"
+                                                    className={`${active ? 'bg-gray-100' : ''
+                                                        } block px-4 py-2 text-sm text-gray-700`}
+                                                >
+                                                    Settings
+                                                </Link>
+                                            )}
+                                        </Menu.Item>
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <button
+                                                    onClick={() => signOut()}
+                                                    className={`${active ? 'bg-gray-100' : ''
+                                                        } block px-4 py-2 text-sm text-gray-700`}
+                                                >
+                                                    Sign Out
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    </Menu.Items>
+                                </Menu>
                             </div>
                         ) : (
                             <button

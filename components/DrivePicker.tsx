@@ -1,4 +1,7 @@
-import { useState } from 'react';
+'use client';
+import React, { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import LoadingSpinner from './LoadingSpinner';
 
 interface DriveItem {
     id: string;
@@ -13,33 +16,43 @@ interface DrivePickerProps {
 }
 
 export default function DrivePicker({ onSelect }: DrivePickerProps) {
+    const { data: session } = useSession();
     const [items, setItems] = useState<DriveItem[]>([]);
     const [currentFolder, setCurrentFolder] = useState<string>('root');
-    const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; name: string }[]>([{ id: 'root', name: 'My Drive' }]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [breadcrumbs, setBreadcrumbs] = useState<DriveItem[]>([{ id: 'root', name: 'My Drive', mimeType: 'folder' }]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [selectedItems, setSelectedItems] = useState<DriveItem[]>([]);
 
-    const fetchFolderContents = async (folderId: string = 'root') => {
-        setIsLoading(true);
-        setError('');
+    const fetchFolderContents = async (folderId: string) => {
         try {
-            const query = folderId === 'root' ? '' : `'${folderId}' in parents`;
-            const response = await fetch(`/api/drive/list-files?folderId=${folderId}&q=${encodeURIComponent(query)}`);
-            if (!response.ok) throw new Error('Failed to fetch files');
+            setIsLoading(true);
+            setError(null);
+            console.log('Fetching folder contents for:', folderId);
+
+            const response = await fetch(`/api/drive/list-files?folderId=${folderId}&q=`, {
+                credentials: 'include' // This ensures cookies are sent
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to fetch files');
+            }
+
             const data = await response.json();
-            setItems(data.files);
+            console.log('Received files:', data);
+            setItems(data);
             setCurrentFolder(folderId);
-        } catch (err) {
-            setError('Failed to fetch files from Google Drive');
-            console.error(err);
+        } catch (error) {
+            console.error('Error:', error);
+            setError(error instanceof Error ? error.message : 'Failed to fetch files');
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleFolderClick = async (folder: DriveItem) => {
-        const newBreadcrumbs = [...breadcrumbs, { id: folder.id, name: folder.name }];
+        const newBreadcrumbs = [...breadcrumbs, { id: folder.id, name: folder.name, mimeType: folder.mimeType }];
         setBreadcrumbs(newBreadcrumbs);
         await fetchFolderContents(folder.id);
     };
