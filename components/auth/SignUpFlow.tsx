@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { UserRole, SubscriptionTier } from '../../types/auth';
+import { UserRole, UserTier } from '../../types/auth';
 
 interface PricingTier {
     name: string;
+    tier: UserTier;
     price: string;
     features: string[];
     buttonText: string;
@@ -14,6 +15,7 @@ const PRICING_TIERS: Record<UserRole, PricingTier[]> = {
     district: [
         {
             name: 'Free Trial',
+            tier: 'trial',
             price: '$0/month',
             features: [
                 'AI-powered content generation',
@@ -25,6 +27,7 @@ const PRICING_TIERS: Record<UserRole, PricingTier[]> = {
         },
         {
             name: 'Premium',
+            tier: 'premium',
             price: '$199/month',
             features: [
                 'Everything in Free Trial',
@@ -40,6 +43,7 @@ const PRICING_TIERS: Record<UserRole, PricingTier[]> = {
     consultant: [
         {
             name: 'Free Trial',
+            tier: 'trial',
             price: '$0/month',
             features: [
                 'Manage up to 3 districts',
@@ -51,6 +55,7 @@ const PRICING_TIERS: Record<UserRole, PricingTier[]> = {
         },
         {
             name: 'Premium',
+            tier: 'premium',
             price: '$499/month',
             features: [
                 'Unlimited districts',
@@ -68,7 +73,7 @@ const PRICING_TIERS: Record<UserRole, PricingTier[]> = {
 export default function SignUpFlow() {
     const [step, setStep] = useState<'role' | 'pricing' | 'details'>('role');
     const [role, setRole] = useState<UserRole>();
-    const [tier, setTier] = useState<SubscriptionTier>();
+    const [tier, setTier] = useState<UserTier>();
     const [organizationName, setOrganizationName] = useState('');
 
     const handleRoleSelection = (selectedRole: UserRole) => {
@@ -76,7 +81,7 @@ export default function SignUpFlow() {
         setStep('pricing');
     };
 
-    const handleTierSelection = (selectedTier: SubscriptionTier) => {
+    const handleTierSelection = (selectedTier: UserTier) => {
         setTier(selectedTier);
         setStep('details');
     };
@@ -153,7 +158,7 @@ export default function SignUpFlow() {
                                     ))}
                                 </ul>
                                 <button
-                                    onClick={() => handleTierSelection(tier.name === 'Free Trial' ? 'trial' : 'premium')}
+                                    onClick={() => handleTierSelection(tier.tier)}
                                     className={`mt-8 w-full py-3 px-4 rounded-md ${tier.recommended
                                         ? 'bg-indigo-600 text-white hover:bg-indigo-700'
                                         : 'bg-white text-indigo-600 border-2 border-indigo-600 hover:bg-indigo-50'
