@@ -1,64 +1,80 @@
 import { signIn, useSession } from 'next-auth/react';
+import Link from 'next/link';
 
 export default function Home() {
     const { data: session } = useSession();
 
     return (
-        <div className="bg-white">
-            {/* Hero Section */}
-            <div className="relative bg-indigo-800">
-                <div className="absolute inset-0">
-                    <img
-                        className="w-full h-full object-cover"
-                        src="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80"
-                        alt="Education"
-                    />
-                    <div className="absolute inset-0 bg-indigo-800 mix-blend-multiply" />
-                </div>
-                <div className="relative max-w-7xl mx-auto py-24 px-4 sm:py-32 sm:px-6 lg:px-8">
-                    <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
-                        Transform Your School's Document Management
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-blue-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+                <div className="text-center">
+                    {/* Logo */}
+                    <div className="relative w-24 h-24 mx-auto mb-8">
+                        <div className="absolute inset-0 bg-blue-600 rounded-full opacity-70 blur-lg"></div>
+                        <div className="absolute inset-4 bg-indigo-500 rounded-full opacity-60 blur-md"></div>
+                        <div className="absolute inset-8 bg-blue-400 rounded-full opacity-50 blur-sm"></div>
+                    </div>
+
+                    <h1 className="text-5xl font-extrabold text-gray-900 sm:text-6xl">
+                        Blurcle
                     </h1>
-                    <p className="mt-6 text-xl text-indigo-100 max-w-3xl">
-                        Streamline your educational workflow with our intelligent document management system.
-                        Organize, collaborate, and access your materials seamlessly.
+                    <p className="mt-3 text-xl text-indigo-600 font-medium">
+                        Bringing clarity to school communications
                     </p>
-                    {!session && (
-                        <div className="mt-10">
+                    <p className="mt-6 text-lg text-gray-600 max-w-3xl mx-auto">
+                        Empower your school district with AI-driven communication tools, streamlined content creation,
+                        and professional PR management—all in one intuitive platform.
+                    </p>
+
+                    <div className="mt-10">
+                        {session ? (
+                            <Link
+                                href="/dashboard"
+                                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                            >
+                                Go to Dashboard
+                            </Link>
+                        ) : (
                             <button
                                 onClick={() => signIn('google')}
-                                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50"
+                                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
                             >
                                 Get Started
                             </button>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            {/* Features Section */}
-            <div className="py-16 bg-gray-50 overflow-hidden">
-                <div className="max-w-7xl mx-auto px-4 space-y-8 sm:px-6 lg:px-8">
-                    <div className="text-center">
-                        <h2 className="text-base text-indigo-600 font-semibold tracking-wide uppercase">
-                            Features
-                        </h2>
-                        <p className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">
-                            Everything you need to manage your school documents
-                        </p>
+                {/* Feature Grid */}
+                <div className="mt-24 grid gap-8 md:grid-cols-3">
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+                            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900">AI-Powered Content</h3>
+                        <p className="mt-2 text-gray-600">Generate professional communications with our advanced AI tools.</p>
                     </div>
 
-                    <div className="mt-16">
-                        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-                            {/* Feature 1 */}
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-medium text-gray-900">Smart Organization</h3>
-                                <p className="mt-2 text-base text-gray-500">
-                                    AI-powered organization system that automatically categorizes and tags your documents.
-                                </p>
-                            </div>
-                            {/* Add more features */}
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
+                            <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
                         </div>
+                        <h3 className="text-lg font-semibold text-gray-900">Document Management</h3>
+                        <p className="mt-2 text-gray-600">Organize and access your communications seamlessly with Google Drive integration.</p>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+                            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900">Professional PR Tools</h3>
+                        <p className="mt-2 text-gray-600">Manage your district's public relations with expert templates and tools.</p>
                     </div>
                 </div>
             </div>
