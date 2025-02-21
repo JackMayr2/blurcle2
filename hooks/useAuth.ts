@@ -1,7 +1,8 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
-import { UserRole } from '@/types/auth';
+
+export type UserRole = 'user' | 'admin' | string;
 
 export function useAuth(requiredRole?: UserRole) {
     const { data: session, status } = useSession();
@@ -10,7 +11,9 @@ export function useAuth(requiredRole?: UserRole) {
     const isAuthenticated = status === 'authenticated';
 
     useEffect(() => {
-        if (!isLoading && !isAuthenticated) {
+        if (isLoading) return;
+
+        if (!isAuthenticated) {
             router.replace('/auth/signin');
         } else if (requiredRole && session?.user?.role !== requiredRole) {
             router.replace('/dashboard');
