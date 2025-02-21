@@ -2,11 +2,12 @@ import { SessionProvider } from 'next-auth/react';
 import type { AppProps } from 'next/app';
 import { Navbar, Footer } from '@/components';
 import '@/styles/globals.css';
+import { Session } from 'next-auth';
 
-export default function App({
+function MyApp({
     Component,
     pageProps: { session, ...pageProps }
-}: AppProps) {
+}: AppProps<{ session: Session }>) {
     return (
         <SessionProvider session={session}>
             <div className="flex flex-col min-h-screen">
@@ -18,4 +19,6 @@ export default function App({
             </div>
         </SessionProvider>
     );
-} 
+}
+
+export default MyApp; 
