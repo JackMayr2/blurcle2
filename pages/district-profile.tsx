@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DrivePicker from '../components/DrivePicker';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DriveItem {
     id: string;
@@ -25,7 +26,7 @@ interface ExtendedSession {
 }
 
 export default function DistrictProfile() {
-    const { data: session, status } = useSession() as { data: ExtendedSession | null, status: string };
+    const { session, isLoading } = useAuth('district');
     const router = useRouter();
     const [showPicker, setShowPicker] = useState(false);
     const [selectedItems, setSelectedItems] = useState<DriveItem[]>([]);
@@ -43,33 +44,17 @@ export default function DistrictProfile() {
     }, [router]);
 
     useEffect(() => {
-        if (status === 'unauthenticated') {
+        if (isLoading) {
             setIsTransitioning(true);
-            router.replace('/auth/signin');
-            return;
         }
-
-        if (status === 'authenticated') {
-            if (!session?.user?.onboardingComplete) {
-                setIsTransitioning(true);
-                router.replace('/auth/signup');
-                return;
-            }
-
-            if (session?.user?.role !== 'district') {
-                setIsTransitioning(true);
-                router.replace('/dashboard');
-                return;
-            }
-        }
-    }, [status, session, router]);
+    }, [isLoading]);
 
     const handleSelection = (items: DriveItem[]) => {
         setSelectedItems(items);
         setShowPicker(false);
     };
 
-    if (status === 'loading' || isTransitioning) {
+    if (isLoading || isTransitioning) {
         return (
             <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center transition-opacity duration-300">
                 <div className="text-center">
