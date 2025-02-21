@@ -1,4 +1,5 @@
-import { UserTier } from '@/types/auth';  // Using path alias
+import React from 'react';
+import { UserTier } from '@/types/auth';
 
 interface PricingProps {
     selectedTier?: UserTier;
@@ -6,5 +7,11 @@ interface PricingProps {
 }
 
 export const PricingTable: React.FC<PricingProps> = ({ selectedTier, onSelect }) => {
-    // Implementation
-}; 
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Implement your pricing table UI here */}
+        </div>
+    );
+};
+
+export default PricingTable; 

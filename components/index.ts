@@ -1,5 +1,10 @@
-export * from './auth/SignUpFlow';
-export * from './pricing/PricingTable';
-export * from './LoadingSpinner';
-export * from './Navbar';
-export * from './Footer'; 
+// Auth
+export { default as SignUpFlow } from './auth/SignUpFlow';
+
+// Pricing
+export { default as PricingTable } from './pricing/PricingTable';
+
+// Core
+export { default as LoadingSpinner } from './LoadingSpinner';
+export { default as Navbar } from './Navbar';
+export { default as Footer } from './Footer'; 
