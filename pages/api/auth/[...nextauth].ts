@@ -1,6 +1,22 @@
 import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import { NextAuthOptions } from 'next-auth';
+import { JWT } from 'next-auth/jwt';
+
+// Add type declaration for the session user
+interface SessionUser {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+}
+
+declare module 'next-auth' {
+    interface Session {
+        user: SessionUser;
+        accessToken?: string;
+    }
+}
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -27,7 +43,7 @@ export const authOptions: NextAuthOptions = {
     },
     callbacks: {
         async session({ session, token }) {
-            if (session?.user) {
+            if (session?.user && token.sub) {  // Add null check for token.sub
                 session.user.id = token.sub;
             }
             return session;
