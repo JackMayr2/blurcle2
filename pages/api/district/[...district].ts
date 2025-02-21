@@ -1,4 +1,6 @@
-import { withAuth } from '../../../lib/api-middleware';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { Session } from 'next-auth';
+import { withAuth } from '@/lib/api-middleware';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse, session: Session) => {
     const { method } = req;

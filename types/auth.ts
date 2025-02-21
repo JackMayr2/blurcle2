@@ -1,3 +1,5 @@
+import { DefaultSession } from 'next-auth';
+
 export interface User {
     id: string;
     name?: string | null;

@@ -1,8 +1,18 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { Session } from 'next-auth';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../pages/api/auth/[...nextauth]';
+import { authOptions } from '@/pages/api/auth/[...nextauth]';
 
-export const withAuth = (handler: any) => async (req: NextApiRequest, res: NextApiResponse) => {
+type ApiHandler = (
+    req: NextApiRequest,
+    res: NextApiResponse,
+    session: Session
+) => Promise<void | NextApiResponse>;
+
+export const withAuth = (handler: ApiHandler) => async (
+    req: NextApiRequest,
+    res: NextApiResponse
+) => {
     try {
         const session = await getServerSession(req, res, authOptions);
         if (!session?.user) {
