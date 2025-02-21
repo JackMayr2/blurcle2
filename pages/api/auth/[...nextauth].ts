@@ -33,11 +33,12 @@ export const authOptions: AuthOptions = {
         },
         async session({ session, token }) {
             if (session?.user) {
-                session.user.id = token.sub;
-                session.user.role = token.role as string;
-                session.user.tier = token.tier as string;
-                session.user.onboardingComplete = token.onboardingComplete as boolean;
-                session.user.organizationName = token.organizationName as string;
+                session.user.id = token.sub!;
+                session.user.role = token.role;
+                session.user.tier = token.tier;
+                session.user.onboardingComplete = token.onboardingComplete;
+                session.user.organizationName = token.organizationName;
+                session.accessToken = token.accessToken;
             }
             return session;
         },
