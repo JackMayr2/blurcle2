@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { UserRole, UserTier } from '@/types/auth';
-import { PricingTable } from '@/components/pricing/PricingTable';
+import PricingTable from '@/components/pricing/PricingTable';
 
 interface PricingTier {
     name: string;
