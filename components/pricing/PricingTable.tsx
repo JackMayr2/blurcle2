@@ -6,7 +6,7 @@ interface PricingProps {
     onSelect: (tier: UserTier) => void;
 }
 
-export const PricingTable: React.FC<PricingProps> = ({ selectedTier, onSelect }) => {
+const PricingTable: React.FC<PricingProps> = ({ selectedTier, onSelect }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Implement your pricing table UI here */}
