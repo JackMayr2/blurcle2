@@ -1,11 +1,12 @@
-import NextAuth, { AuthOptions, Session, User as NextAuthUser } from 'next-auth';
+import NextAuth, { AuthOptions, Session, User as NextAuthUser, Account, Profile } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import { JWT } from 'next-auth/jwt';
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import prisma from '../../../lib/prisma';
 
 // Extend the built-in User type
-interface User extends NextAuthUser {
+interface ExtendedUser extends NextAuthUser {
+    id: string;
     role?: string | null;
     tier?: string | null;
     onboardingComplete?: boolean;
@@ -14,10 +15,12 @@ interface User extends NextAuthUser {
 
 // Extend the built-in JWT type
 interface ExtendedJWT extends JWT {
+    id?: string;
     role?: string | null;
     tier?: string | null;
     onboardingComplete?: boolean;
     organizationName?: string | null;
+    accessToken?: string;
 }
 
 export const authOptions: AuthOptions = {
@@ -60,11 +63,12 @@ export const authOptions: AuthOptions = {
                     token.accessToken = account.access_token;
                 }
                 if (user) {
-                    token.id = user.id;
-                    token.role = user.role;
-                    token.tier = user.tier;
-                    token.onboardingComplete = user.onboardingComplete;
-                    token.organizationName = user.organizationName;
+                    const extendedUser = user as ExtendedUser;
+                    token.id = extendedUser.id;
+                    token.role = extendedUser.role;
+                    token.tier = extendedUser.tier;
+                    token.onboardingComplete = extendedUser.onboardingComplete;
+                    token.organizationName = extendedUser.organizationName;
                 }
                 return token;
             } catch (error) {
@@ -75,6 +79,7 @@ export const authOptions: AuthOptions = {
         async session({ session, token }) {
             try {
                 if (session?.user) {
+                    const extendedToken = token as ExtendedJWT;
                     const user = await prisma.user.findUnique({
                         where: { email: session.user.email! },
                         include: {
