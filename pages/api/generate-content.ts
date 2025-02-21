@@ -4,6 +4,49 @@ import { google } from 'googleapis';
 import { authOptions } from './auth/[...nextauth]';
 import { LLMService } from '../../utils/llm';
 
+interface GoogleDocInfo {
+    title: string;
+    docId: string;
+    docUrl: string;
+}
+
+async function createGoogleDoc(accessToken: string, content: { title: string; content: string }): Promise<GoogleDocInfo> {
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({
+        access_token: accessToken
+    });
+
+    const docs = google.docs({ version: 'v1', auth: oauth2Client });
+
+    // Create the document
+    const doc = await docs.documents.create({
+        requestBody: {
+            title: content.title,
+        },
+    });
+
+    // Insert the content
+    await docs.documents.batchUpdate({
+        documentId: doc.data.documentId,
+        requestBody: {
+            requests: [{
+                insertText: {
+                    location: {
+                        index: 1,
+                    },
+                    text: content.content,
+                },
+            }],
+        },
+    });
+
+    return {
+        title: content.title,
+        docId: doc.data.documentId,
+        docUrl: `https://docs.google.com/document/d/${doc.data.documentId}/edit`
+    };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -76,41 +119,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             } : String(error)
         });
     }
-}
-
-async function createGoogleDoc(accessToken: string, content: { title: string; content: string }) {
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({
-        access_token: accessToken
-    });
-
-    const docs = google.docs({ version: 'v1', auth: oauth2Client });
-    const drive = google.drive({ version: 'v3', auth: oauth2Client });
-
-    // Create the document
-    const doc = await docs.documents.create({
-        requestBody: {
-            title: content.title,
-        },
-    });
-
-    // Insert the content
-    await docs.documents.batchUpdate({
-        documentId: doc.data.documentId,
-        requestBody: {
-            requests: [{
-                insertText: {
-                    location: {
-                        index: 1,
-                    },
-                    text: content.content,
-                },
-            }],
-        },
-    });
-
-    return {
-        docId: doc.data.documentId,
-        docUrl: `https://docs.google.com/document/d/${doc.data.documentId}/edit`
-    };
 } 
