@@ -1,4 +1,4 @@
-import { UserTier } from '../types/auth';
+import { UserTier } from '@/types/auth';
 
 interface SubscriptionContextType {
     currentTier: UserTier; // Changed from SubscriptionTier
