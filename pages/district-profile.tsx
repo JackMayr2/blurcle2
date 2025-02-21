@@ -1,18 +1,13 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
-import LoadingSpinner from '../components/LoadingSpinner';
-import DrivePicker from '../components/DrivePicker';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import DrivePicker from '@/components/DrivePicker';
 import { useAuth } from '@/hooks/useAuth';
+import { Session } from 'next-auth';
+import { DriveItem } from '@/types/google';
 
-interface DriveItem {
-    id: string;
-    name: string;
-    mimeType: string;
-}
-
-interface ExtendedSession {
+interface ExtendedSession extends Session {
     user: {
         name?: string | null;
         email?: string | null;
@@ -26,7 +21,7 @@ interface ExtendedSession {
 }
 
 export default function DistrictProfile() {
-    const { session, isLoading } = useAuth('district');
+    const { session, isLoading } = useAuth('district') as { session: ExtendedSession | null, isLoading: boolean };
     const router = useRouter();
     const [showPicker, setShowPicker] = useState(false);
     const [selectedItems, setSelectedItems] = useState<DriveItem[]>([]);
