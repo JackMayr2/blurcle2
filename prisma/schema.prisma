@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String      @id @default(cuid())
+  email            String      @unique
+  name             String?
+  role             String      // 'district' or 'consultant'
+  tier             String      // 'trial' or 'premium'
+  organizationName String?
+  onboardingComplete Boolean   @default(false)
+  createdAt        DateTime    @default(now())
+  trialEndsAt      DateTime?
+  districts        District[]  // Only used if role is 'consultant'
+}
+
+model District {
+  id               String    @id @default(cuid())
+  name             String
+  driveRootFolderId String?
+  contactEmail     String?
+  contactName      String?
+  consultant       User?     @relation(fields: [consultantId], references: [id])
+  consultantId     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+} 
