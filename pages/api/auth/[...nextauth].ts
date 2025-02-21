@@ -1,27 +1,7 @@
-import NextAuth, { AuthOptions, Session, User as NextAuthUser, Account, Profile } from 'next-auth';
+import NextAuth, { AuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
-import { JWT } from 'next-auth/jwt';
-import { PrismaAdapter } from "@next-auth/prisma-adapter"
-import prisma from '../../../lib/prisma';
-
-// Extend the built-in User type
-interface ExtendedUser extends NextAuthUser {
-    id: string;
-    role?: string | null;
-    tier?: string | null;
-    onboardingComplete?: boolean;
-    organizationName?: string | null;
-}
-
-// Extend the built-in JWT type
-interface ExtendedJWT extends JWT {
-    id?: string;
-    role?: string | null;
-    tier?: string | null;
-    onboardingComplete?: boolean;
-    organizationName?: string | null;
-    accessToken?: string;
-}
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import prisma from '@/lib/prisma';
 
 export const authOptions: AuthOptions = {
     adapter: PrismaAdapter(prisma),
@@ -39,79 +19,39 @@ export const authOptions: AuthOptions = {
             }
         })
     ],
+    secret: process.env.NEXTAUTH_SECRET,
+    session: {
+        strategy: 'jwt'
+    },
     pages: {
         signIn: '/auth/signin',
         error: '/auth/error'
     },
-    session: {
-        strategy: 'jwt',
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-    },
     callbacks: {
-        async signIn({ user, account, profile }) {
-            try {
-                if (!account?.provider) return false;
-                return true;
-            } catch (error) {
-                console.error('SignIn Error:', error);
-                return false;
-            }
-        },
-        async jwt({ token, account, user }) {
-            try {
-                if (account) {
-                    token.accessToken = account.access_token;
-                }
-                if (user) {
-                    const extendedUser = user as ExtendedUser;
-                    token.id = extendedUser.id;
-                    token.role = extendedUser.role;
-                    token.tier = extendedUser.tier;
-                    token.onboardingComplete = extendedUser.onboardingComplete;
-                    token.organizationName = extendedUser.organizationName;
-                }
-                return token;
-            } catch (error) {
-                console.error('JWT Error:', error);
-                return token;
-            }
+        async signIn({ user, account }) {
+            return true;
         },
         async session({ session, token }) {
-            try {
-                if (session?.user) {
-                    const extendedToken = token as ExtendedJWT;
-                    const user = await prisma.user.findUnique({
-                        where: { email: session.user.email! },
-                        include: {
-                            accounts: {
-                                where: { provider: 'google' },
-                                select: { access_token: true }
-                            }
-                        }
-                    });
-
-                    if (!user) {
-                        return session;
-                    }
-
-                    return {
-                        ...session,
-                        accessToken: user.accounts[0]?.access_token,
-                        user: {
-                            ...session.user,
-                            id: user.id,
-                            role: user.role,
-                            tier: user.tier,
-                            onboardingComplete: user.onboardingComplete,
-                            organizationName: user.organizationName
-                        }
-                    };
-                }
-                return session;
-            } catch (error) {
-                console.error('Session Error:', error);
-                return session;
+            if (session?.user) {
+                session.user.id = token.sub;
+                session.user.role = token.role as string;
+                session.user.tier = token.tier as string;
+                session.user.onboardingComplete = token.onboardingComplete as boolean;
+                session.user.organizationName = token.organizationName as string;
             }
+            return session;
+        },
+        async jwt({ token, user, account }) {
+            if (user) {
+                token.role = user.role;
+                token.tier = user.tier;
+                token.onboardingComplete = user.onboardingComplete;
+                token.organizationName = user.organizationName;
+            }
+            if (account) {
+                token.accessToken = account.access_token;
+            }
+            return token;
         }
     },
     debug: process.env.NODE_ENV === 'development'

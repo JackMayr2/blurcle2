@@ -1,9 +1,27 @@
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/router';
+import { useState } from 'react';
 
 export default function SignIn() {
     const router = useRouter();
-    const { error } = router.query;
+    const [error, setError] = useState<string | null>(null);
+    const { callbackUrl } = router.query;
+
+    const handleSignIn = async () => {
+        try {
+            const result = await signIn('google', {
+                callbackUrl: callbackUrl as string || '/dashboard',
+                redirect: false
+            });
+
+            if (result?.error) {
+                setError(result.error);
+            }
+        } catch (error) {
+            console.error('Sign in error:', error);
+            setError('An error occurred during sign in');
+        }
+    };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -19,8 +37,8 @@ export default function SignIn() {
                     )}
                 </div>
                 <button
-                    onClick={() => signIn('google', { callbackUrl: '/' })}
-                    className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                    onClick={handleSignIn}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
                 >
                     Sign in with Google
                 </button>
