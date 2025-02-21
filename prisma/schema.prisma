@@ -52,7 +52,7 @@ model User {
   accounts          Account[]
   sessions          Session[]
   // For consultants - the districts they manage
-  managedDistricts  District[]  @relation("ConsultantToDistrict")
+  consultantDistricts District[]  @relation("ConsultantToDistrict")
   // For district reps - their district
   district          District?   @relation("UserToDistrict")
 }
