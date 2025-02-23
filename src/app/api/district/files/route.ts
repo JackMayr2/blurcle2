@@ -18,7 +18,9 @@ export async function GET(request: NextRequest) {
                 district: {
                     include: {
                         files: {
-                            orderBy: { createdAt: 'desc' }
+                            orderBy: {
+                                createdAt: 'desc'
+                            }
                         }
                     }
                 }
