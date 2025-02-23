@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { PrismaClient, Prisma } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
     try {
@@ -14,8 +16,12 @@ export async function GET(request: NextRequest) {
         // First get the user's district
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
-            include: {
-                district: true
+            select: {
+                district: {
+                    select: {
+                        id: true
+                    }
+                }
             }
         });
 
@@ -23,19 +29,15 @@ export async function GET(request: NextRequest) {
             return Response.json({ error: 'District not found' }, { status: 404 });
         }
 
-        // Then get the district's files
-        const files = await prisma.district.findUnique({
+        // Then get the files separately
+        const files = await prisma.file.findMany({
             where: {
-                id: user.district.id
+                districtId: user.district.id
             },
-            include: {
-                files: {
-                    orderBy: {
-                        createdAt: 'desc'
-                    }
-                }
+            orderBy: {
+                createdAt: 'desc'
             }
-        }).then(district => district?.files || []);
+        });
 
         return Response.json({ files });
     } catch (error) {
