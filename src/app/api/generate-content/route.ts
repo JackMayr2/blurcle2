@@ -7,7 +7,16 @@ import OpenAI from 'openai';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    timeout: 30000, // 30 second timeout for OpenAI
+    maxRetries: 3,
 });
+
+// Set response time limit to 60 seconds
+export const maxDuration = 60;
+
+// Enable streaming responses
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 export async function POST(request: NextRequest) {
     try {
@@ -72,62 +81,73 @@ export async function POST(request: NextRequest) {
                 finalContent = contentMatch?.[1] || response;
             } catch (error) {
                 console.error('Error generating content with AI:', error);
-                return Response.json({ error: 'Failed to generate content with AI' }, { status: 500 });
+                return Response.json({
+                    error: 'Failed to generate content with AI',
+                    details: error instanceof Error ? error.message : 'Unknown error'
+                }, { status: 500 });
             }
         } else {
             title = `${contentType} - ${new Date().toLocaleDateString()}`;
             finalContent = content;
         }
 
-        // Create a new document in Google Drive
-        const drive = google.drive({ version: 'v3', auth: oauth2Client });
-        const docs = google.docs({ version: 'v1', auth: oauth2Client });
+        try {
+            // Create a new document in Google Drive
+            const drive = google.drive({ version: 'v3', auth: oauth2Client });
+            const docs = google.docs({ version: 'v1', auth: oauth2Client });
 
-        // Create an empty document
-        const fileMetadata = {
-            name: title,
-            mimeType: 'application/vnd.google-apps.document',
-        };
+            // Create an empty document
+            const fileMetadata = {
+                name: title,
+                mimeType: 'application/vnd.google-apps.document',
+            };
 
-        const file = await drive.files.create({
-            requestBody: fileMetadata,
-            fields: 'id',
-        });
+            const file = await drive.files.create({
+                requestBody: fileMetadata,
+                fields: 'id',
+            });
 
-        const documentId = file.data.id;
-        if (!documentId) {
-            throw new Error('Failed to create Google Doc');
-        }
+            const documentId = file.data.id;
+            if (!documentId) {
+                throw new Error('Failed to create Google Doc');
+            }
 
-        // Update the document content
-        await docs.documents.batchUpdate({
-            documentId,
-            requestBody: {
-                requests: [
-                    {
-                        insertText: {
-                            location: {
-                                index: 1,
+            // Update the document content
+            await docs.documents.batchUpdate({
+                documentId,
+                requestBody: {
+                    requests: [
+                        {
+                            insertText: {
+                                location: {
+                                    index: 1,
+                                },
+                                text: `${title}\n\n${finalContent}`,
                             },
-                            text: `${title}\n\n${finalContent}`,
                         },
-                    },
-                ],
-            },
-        });
+                    ],
+                },
+            });
 
-        // Return the document details
-        return Response.json({
-            title,
-            content: finalContent,
-            docId: documentId,
-            docUrl: `https://docs.google.com/document/d/${documentId}/edit`,
-        });
+            // Return the document details
+            return Response.json({
+                title,
+                content: finalContent,
+                docId: documentId,
+                docUrl: `https://docs.google.com/document/d/${documentId}/edit`,
+            });
+        } catch (error) {
+            console.error('Error creating Google Doc:', error);
+            return Response.json({
+                error: 'Failed to create Google Doc',
+                details: error instanceof Error ? error.message : 'Unknown error'
+            }, { status: 500 });
+        }
     } catch (error) {
         console.error('Error in generate-content:', error);
-        return Response.json(
-            { error: 'Failed to generate content' },
-            { status: 500 }
-        );
+        return Response.json({
+            error: 'Failed to generate content',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
     }
 } 
