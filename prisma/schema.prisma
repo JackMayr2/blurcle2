@@ -78,4 +78,17 @@ model District {
   consultantId String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  // Drive files
+  files        File[]    @relation("DistrictToFile")
+}
+
+model File {
+  id            String   @id @default(cuid())
+  name          String
+  googleDriveId String
+  mimeType      String
+  district      District @relation("DistrictToFile", fields: [districtId], references: [id])
+  districtId    String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 } 

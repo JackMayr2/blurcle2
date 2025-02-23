@@ -71,11 +71,23 @@ const PRICING_TIERS: Record<UserRole, PricingTier[]> = {
     ]
 };
 
-export default function SignUpFlow() {
+interface SignUpFlowProps {
+    onComplete: (role: string, organizationName: string) => void;
+    isSubmitting: boolean;
+    initialRole?: string;
+    initialOrganization?: string;
+}
+
+export default function SignUpFlow({
+    onComplete,
+    isSubmitting,
+    initialRole,
+    initialOrganization
+}: SignUpFlowProps) {
     const [step, setStep] = useState<'role' | 'pricing' | 'details'>('role');
-    const [role, setRole] = useState<UserRole>();
+    const [role, setRole] = useState<UserRole>(initialRole as UserRole || undefined);
     const [tier, setTier] = useState<UserTier>();
-    const [organizationName, setOrganizationName] = useState('');
+    const [organizationName, setOrganizationName] = useState(initialOrganization || '');
 
     const handleRoleSelection = (selectedRole: UserRole) => {
         setRole(selectedRole);
@@ -87,18 +99,11 @@ export default function SignUpFlow() {
         setStep('details');
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
-        // Store selection in session storage for post-auth processing
-        sessionStorage.setItem('signupData', JSON.stringify({
-            role,
-            tier,
-            organizationName
-        }));
-
-        // Proceed with Google sign in
-        await signIn('google', { callbackUrl: '/onboarding' });
+        if (role && organizationName) {
+            onComplete(role, organizationName);
+        }
     };
 
     return (
@@ -180,8 +185,21 @@ export default function SignUpFlow() {
                         <p className="mt-4 text-lg text-gray-600">Just a few more details before we get started</p>
                     </div>
                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Role</label>
+                        <select
+                            value={role}
+                            onChange={(e) => setRole(e.target.value as UserRole)}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            required
+                        >
+                            <option value="">Select your role</option>
+                            <option value="district">School District Representative</option>
+                            <option value="consultant">Educational Consultant</option>
+                        </select>
+                    </div>
+                    <div>
                         <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700">
-                            {role === 'district' ? 'District Name' : 'Organization Name'}
+                            Organization Name
                         </label>
                         <input
                             type="text"
@@ -194,9 +212,10 @@ export default function SignUpFlow() {
                     </div>
                     <button
                         type="submit"
+                        disabled={isSubmitting}
                         className="w-full py-3 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
                     >
-                        Continue with Google
+                        {isSubmitting ? 'Completing Signup...' : 'Complete Signup'}
                     </button>
                 </form>
             )}

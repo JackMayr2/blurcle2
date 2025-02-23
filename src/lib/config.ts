@@ -4,8 +4,8 @@ const config = {
         secret: process.env.NEXTAUTH_SECRET!,
     },
     google: {
-        clientId: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        clientId: process.env.GOOGLE_ID!,
+        clientSecret: process.env.GOOGLE_SECRET!,
     },
     database: {
         url: process.env.POSTGRES_PRISMA_URL!,

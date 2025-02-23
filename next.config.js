@@ -4,6 +4,10 @@ const nextConfig = {
     images: {
         domains: ['lh3.googleusercontent.com'], // For Google profile images
     },
+    experimental: {
+        esmExternals: true,
+    },
+    pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
     async headers() {
         return [
             {
