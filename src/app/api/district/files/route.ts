@@ -11,19 +11,11 @@ export async function GET(request: NextRequest) {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Get the user's district and its files
+        // First get the user's district
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
             include: {
-                district: {
-                    include: {
-                        files: {
-                            orderBy: {
-                                createdAt: 'desc'
-                            }
-                        }
-                    }
-                }
+                district: true
             }
         });
 
@@ -31,7 +23,17 @@ export async function GET(request: NextRequest) {
             return Response.json({ error: 'District not found' }, { status: 404 });
         }
 
-        return Response.json({ files: user.district.files });
+        // Then get the district's files
+        const files = await prisma.file.findMany({
+            where: {
+                districtId: user.district.id
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+
+        return Response.json({ files });
     } catch (error) {
         console.error('Error fetching district files:', error);
         return Response.json(
