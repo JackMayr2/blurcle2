@@ -24,14 +24,18 @@ export async function GET(request: NextRequest) {
         }
 
         // Then get the district's files
-        const files = await prisma.file.findMany({
+        const files = await prisma.district.findUnique({
             where: {
-                districtId: user.district.id
+                id: user.district.id
             },
-            orderBy: {
-                createdAt: 'desc'
+            include: {
+                files: {
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                }
             }
-        });
+        }).then(district => district?.files || []);
 
         return Response.json({ files });
     } catch (error) {
