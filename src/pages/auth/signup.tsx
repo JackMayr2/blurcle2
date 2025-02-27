@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import SignUpFlow from '@/components/auth/SignUpFlow';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { LoadingSpinner } from '@/components/ui';
 
 export default function SignUp() {
     const { data: session, status, update: updateSession } = useSession();

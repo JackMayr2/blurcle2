@@ -1,14 +1,17 @@
 'use client';
 import React from 'react';
+import { BaseProps } from '@/types';
 
-interface LoadingSpinnerProps {
-    className?: string;
-}
+type LoadingSpinnerProps = BaseProps;
 
-export default function LoadingSpinner({ className = "h-8 w-8" }: LoadingSpinnerProps) {
+export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
+    className = "h-8 w-8"
+}) => {
     return (
         <div className="flex justify-center items-center animate-fade-in">
             <div className={`animate-spin rounded-full border-b-2 border-indigo-600 ${className}`}></div>
         </div>
     );
-} 
+};
+
+export default LoadingSpinner; 

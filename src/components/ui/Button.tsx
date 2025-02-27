@@ -1,13 +1,14 @@
-import React from 'react';
-import LoadingSpinner from '../LoadingSpinner';
+import React, { memo } from 'react';
+import { BaseProps } from '@/types';
+import { LoadingSpinner } from './LoadingSpinner';
 
 // Create reusable UI components
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, BaseProps {
     variant?: 'primary' | 'secondary' | 'danger';
     isLoading?: boolean;
 }
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button: React.FC<ButtonProps> = memo(({
     children,
     variant = 'primary',
     isLoading = false,
@@ -39,6 +40,8 @@ export const Button: React.FC<ButtonProps> = ({
             )}
         </button>
     );
-};
+});
+
+Button.displayName = 'Button';
 
 export default Button; 

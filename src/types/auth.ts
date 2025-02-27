@@ -1,6 +1,6 @@
 import { DefaultSession } from 'next-auth';
 
-export interface User {
+export interface AuthUser {
     id: string;
     name?: string | null;
     email?: string | null;
@@ -15,7 +15,7 @@ export type UserRole = 'district' | 'consultant';
 export type UserTier = 'trial' | 'premium';
 
 export interface Session extends DefaultSession {
-    user: User;
+    user: AuthUser;
     accessToken?: string;
 }
 

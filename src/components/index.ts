@@ -1,7 +1,10 @@
 // Core components
 export { default as Navbar } from './Navbar';
 export { default as Footer } from './Footer';
-export { default as LoadingSpinner } from './LoadingSpinner';
+export { default as ErrorBoundary } from './ErrorBoundary';
+
+// UI components
+export * from './ui';
 
 // Auth components
 export { default as AuthWrapper } from './auth/AuthWrapper';
