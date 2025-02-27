@@ -58,11 +58,6 @@ export default function DrivePicker({ onSelect }: DrivePickerProps) {
         }
     };
 
-    const handleFolderClick = async (folder: DriveItem) => {
-        setFolderPath(prev => [...prev, { id: folder.id, name: folder.name }]);
-        await fetchFolderContents(folder.id);
-    };
-
     const handleBreadcrumbClick = async (index: number) => {
         const newPath = folderPath.slice(0, index + 1);
         const folderId = newPath[newPath.length - 1].id;
