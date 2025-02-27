@@ -44,6 +44,7 @@ export interface ExtendedSession extends DefaultSession {
     image?: string | null;
     role?: string | null;
     onboardingComplete?: boolean;
+    organizationName?: string | null; // Add this line
   };
 }
 

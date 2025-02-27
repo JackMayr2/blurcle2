@@ -1,17 +1,20 @@
 const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+// Use a different variable name to avoid conflict
+const scriptPrisma = new PrismaClient();
 
 async function main() {
     try {
+        console.log('Starting database initialization...');
+        
         // Clean up existing data if needed
-        await prisma.district.deleteMany({});
-        await prisma.user.deleteMany({});
-
+        await scriptPrisma.district.deleteMany({});
+        await scriptPrisma.user.deleteMany({});
+        
         console.log('🗑️ Cleaned up existing data');
 
         // Create a test consultant user
-        const consultant = await prisma.user.create({
+        const consultant = await scriptPrisma.user.create({
             data: {
                 email: 'test@consultant.com',
                 name: 'Test Consultant',
@@ -19,7 +22,7 @@ async function main() {
                 tier: 'trial',
                 organizationName: 'Test Consulting LLC',
                 onboardingComplete: true,
-                districts: {
+                consultantDistricts: {
                     create: [
                         {
                             name: 'Sample District 1',
@@ -37,7 +40,7 @@ async function main() {
         });
 
         // Create a test district user
-        const district = await prisma.user.create({
+        const district = await scriptPrisma.user.create({
             data: {
                 email: 'test@district.edu',
                 name: 'Test District',
@@ -52,9 +55,10 @@ async function main() {
         console.log('Created users:', { consultant, district });
     } catch (error) {
         console.error('❌ Error seeding database:', error);
+        process.exit(1);
     } finally {
-        await prisma.$disconnect();
+        await scriptPrisma.$disconnect();
     }
 }
 
-main(); 
+main();

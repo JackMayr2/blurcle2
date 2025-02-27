@@ -31,6 +31,7 @@ export const authOptions: AuthOptions = {
         if (dbUser) {
           session.user.role = dbUser.role;
           session.user.onboardingComplete = dbUser.onboardingComplete;
+          session.user.organizationName = dbUser.organizationName; // Add this line
         }
       }
       return session;
