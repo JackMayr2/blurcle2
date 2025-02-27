@@ -1,37 +1,62 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/router';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import Head from 'next/head';
+import { Spinner, Modal } from '@/components/ui';
 
-type ContentType = 'newsletter' | 'memo' | 'emergency';
-type InputMode = 'manual' | 'ai';
-
-interface GeneratedContent {
-    title: string;
-    content: string;
-    docId?: string;
-    docUrl?: string;
-}
+// Content type options
+const CONTENT_TYPES = [
+    { id: 'newsletter', label: 'Newsletter' },
+    { id: 'announcement', label: 'Announcement' },
+    { id: 'event', label: 'Event Description' },
+    { id: 'policy', label: 'Policy Document' },
+    { id: 'email', label: 'Email Template' },
+];
 
 export default function ContentCreation() {
-    const { data: session, status } = useSession();
-    const router = useRouter();
-    const [inputMode, setInputMode] = useState<InputMode>('ai');
-    const [contentType, setContentType] = useState<ContentType>('newsletter');
-    const [description, setDescription] = useState('');
-    const [manualContent, setManualContent] = useState('');
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedContent, setGeneratedContent] = useState<GeneratedContent | null>(null);
+    const { data: session } = useSession();
 
-    if (status === 'loading') return <LoadingSpinner />;
-    if (!session) {
-        router.push('/');
-        return null;
-    }
+    // State management
+    const [contentType, setContentType] = useState('');
+    const [prompt, setPrompt] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [generatedContent, setGeneratedContent] = useState<string | null>(null);
+    const [showModal, setShowModal] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [googleTokenStatus, setGoogleTokenStatus] = useState<'valid' | 'expired' | 'checking' | 'unknown'>('unknown');
+
+    // Check Google token status
+    const checkGoogleTokenStatus = async () => {
+        try {
+            setGoogleTokenStatus('checking');
+            const response = await fetch('/api/check-google-token');
+            const data = await response.json();
+
+            console.log('Google token status:', data);
+
+            if (data.status === 'valid' || data.status === 'refreshed') {
+                setGoogleTokenStatus('valid');
+                return true;
+            } else {
+                setGoogleTokenStatus('expired');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error checking Google token status:', error);
+            setGoogleTokenStatus('unknown');
+            return false;
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsGenerating(true);
+        setIsLoading(true);
+        setError(null);
+        setGeneratedContent(null);
+        setSaveSuccess(false);
+        setSaveError(null);
+
         try {
             const response = await fetch('/api/generate-content', {
                 method: 'POST',
@@ -39,161 +64,231 @@ export default function ContentCreation() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    contentType,
-                    description,
-                    content: inputMode === 'manual' ? manualContent : undefined,
-                    mode: inputMode,
+                    prompt,
+                    contentType
                 }),
             });
 
-            if (!response.ok) throw new Error('Failed to generate content');
-
             const data = await response.json();
-            setGeneratedContent(data);
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to generate content');
+            }
+
+            setGeneratedContent(data.content);
+            setShowModal(true);
         } catch (error) {
             console.error('Error generating content:', error);
-            alert('Failed to generate content. Please try again.');
+            setError(error instanceof Error ? error.message : 'An error occurred');
         } finally {
-            setIsGenerating(false);
+            setIsLoading(false);
         }
     };
 
-    return (
-        <div className="min-h-screen bg-gray-50 py-12">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="bg-white rounded-lg shadow px-5 py-6 sm:px-6">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-8">Content Creation</h1>
+    // Handle save to Google Drive
+    const handleSaveToGoogleDrive = async () => {
+        if (!generatedContent) return;
 
+        setSaveSuccess(false);
+        setSaveError(null);
+        setIsLoading(true);
+
+        try {
+            // Check Google token status first
+            const isTokenValid = await checkGoogleTokenStatus();
+
+            if (!isTokenValid) {
+                throw new Error('Your Google session has expired. Please sign out and sign back in to reconnect your Google account.');
+            }
+
+            const selectedType = CONTENT_TYPES.find(type => type.id === contentType);
+            const fileName = `${selectedType?.label || 'Content'} - ${new Date().toLocaleDateString()}`;
+
+            const response = await fetch('/api/save-to-drive', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: generatedContent,
+                    fileName,
+                    mimeType: 'text/plain',
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                // Check if we need to prompt the user to reconnect their account
+                if (data.requiresReconnect) {
+                    throw new Error(`${data.error} Please sign out and sign back in to reconnect your Google account.`);
+                }
+                throw new Error(data.error || 'Failed to save to Google Drive');
+            }
+
+            setSaveSuccess(true);
+            setTimeout(() => {
+                setShowModal(false);
+                setGeneratedContent(null);
+                setPrompt('');
+            }, 2000);
+        } catch (error) {
+            console.error('Error saving to Google Drive:', error);
+            setSaveError(error instanceof Error ? error.message : 'Failed to save to Google Drive');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Check token status when modal is opened
+    useEffect(() => {
+        if (showModal) {
+            checkGoogleTokenStatus();
+        }
+    }, [showModal]);
+
+    if (!session) {
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                <p className="text-lg">Please sign in to access content creation.</p>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <Head>
+                <title>Content Creation | Blurcle</title>
+                <meta name="description" content="Create professional content for your school district" />
+            </Head>
+
+            <div className="container mx-auto px-4 py-8 max-w-4xl">
+                <h1 className="text-3xl font-bold mb-6 text-center">Content Creation</h1>
+
+                <div className="bg-white rounded-lg shadow-md p-6 mb-8">
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Content Type Selection */}
                         <div>
-                            <label htmlFor="contentType" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="contentType" className="block text-sm font-medium text-gray-700 mb-1">
                                 Content Type
                             </label>
                             <select
                                 id="contentType"
                                 value={contentType}
-                                onChange={(e) => setContentType(e.target.value as ContentType)}
-                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                                onChange={(e) => setContentType(e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                required
                             >
-                                <option value="newsletter">Newsletter</option>
-                                <option value="memo">Memo</option>
-                                <option value="emergency">Emergency Communication</option>
+                                <option value="">Select a content type</option>
+                                {CONTENT_TYPES.map((type) => (
+                                    <option key={type.id} value={type.id}>
+                                        {type.label}
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
-                        {/* Input Mode Toggle */}
-                        <div className="flex items-center space-x-4">
-                            <span className="text-sm font-medium text-gray-700">Input Mode:</span>
-                            <div className="flex items-center space-x-4">
-                                <label className="inline-flex items-center">
-                                    <input
-                                        type="radio"
-                                        className="form-radio text-indigo-600"
-                                        name="inputMode"
-                                        value="ai"
-                                        checked={inputMode === 'ai'}
-                                        onChange={(e) => setInputMode(e.target.value as InputMode)}
-                                    />
-                                    <span className="ml-2">AI Generated</span>
-                                </label>
-                                <label className="inline-flex items-center">
-                                    <input
-                                        type="radio"
-                                        className="form-radio text-indigo-600"
-                                        name="inputMode"
-                                        value="manual"
-                                        checked={inputMode === 'manual'}
-                                        onChange={(e) => setInputMode(e.target.value as InputMode)}
-                                    />
-                                    <span className="ml-2">Manual Entry</span>
-                                </label>
+                        <div>
+                            <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-1">
+                                Prompt
+                            </label>
+                            <textarea
+                                id="prompt"
+                                value={prompt}
+                                onChange={(e) => setPrompt(e.target.value)}
+                                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                rows={4}
+                                placeholder="Describe what you want to create..."
+                                required
+                            />
+                            <p className="mt-1 text-sm text-gray-500">
+                                Be specific about your needs, audience, and any key information to include.
+                            </p>
+                        </div>
+
+                        {error && (
+                            <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                                {error}
                             </div>
-                        </div>
+                        )}
 
-                        {/* AI Description or Manual Content Input */}
-                        <div>
-                            {inputMode === 'ai' ? (
-                                <>
-                                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                                        Description for AI Generation
-                                    </label>
-                                    <div className="mt-1">
-                                        <textarea
-                                            id="description"
-                                            rows={4}
-                                            value={description}
-                                            onChange={(e) => setDescription(e.target.value)}
-                                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md"
-                                            placeholder="Describe what you want to communicate..."
-                                        />
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <label htmlFor="manualContent" className="block text-sm font-medium text-gray-700">
-                                        Content
-                                    </label>
-                                    <div className="mt-1">
-                                        <textarea
-                                            id="manualContent"
-                                            rows={8}
-                                            value={manualContent}
-                                            onChange={(e) => setManualContent(e.target.value)}
-                                            className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 mt-1 block w-full sm:text-sm border border-gray-300 rounded-md"
-                                            placeholder="Enter your content here..."
-                                        />
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Submit Button */}
-                        <div>
+                        <div className="flex justify-center">
                             <button
                                 type="submit"
-                                disabled={isGenerating || (inputMode === 'ai' ? !description.trim() : !manualContent.trim())}
-                                className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white 
-                                    ${isGenerating || (inputMode === 'ai' ? !description.trim() : !manualContent.trim())
-                                        ? 'bg-gray-400'
-                                        : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                                disabled={isLoading}
+                                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors duration-200"
                             >
-                                {isGenerating ? (
-                                    <>
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                        </svg>
-                                        {inputMode === 'ai' ? 'Generating...' : 'Creating...'}
-                                    </>
+                                {isLoading ? (
+                                    <span className="flex items-center">
+                                        <Spinner size="sm" className="mr-2" />
+                                        Generating...
+                                    </span>
                                 ) : (
-                                    inputMode === 'ai' ? 'Generate Content' : 'Create Document'
+                                    'Generate Content'
                                 )}
                             </button>
                         </div>
                     </form>
-
-                    {/* Generated Content Preview */}
-                    {generatedContent && (
-                        <div className="mt-8 border-t border-gray-200 pt-8">
-                            <h2 className="text-lg font-medium text-gray-900">Generated Document</h2>
-                            <div className="mt-4">
-                                <p className="text-sm text-gray-500">
-                                    Your content has been saved to Google Drive.
-                                </p>
-                                <a
-                                    href={generatedContent.docUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-                                >
-                                    View Document
-                                </a>
-                            </div>
-                        </div>
-                    )}
                 </div>
+
+                {/* Content Generation Modal */}
+                <Modal
+                    isOpen={showModal}
+                    onClose={() => setShowModal(false)}
+                    title="Generated Content"
+                    size="lg"
+                >
+                    <div className="space-y-4">
+                        {generatedContent && (
+                            <div className="border border-gray-200 rounded-md p-4 bg-gray-50 max-h-96 overflow-y-auto">
+                                <pre className="whitespace-pre-wrap font-sans text-sm">{generatedContent}</pre>
+                            </div>
+                        )}
+
+                        {saveSuccess && (
+                            <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                                Successfully saved to Google Drive!
+                            </div>
+                        )}
+
+                        {saveError && (
+                            <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                                {saveError}
+                            </div>
+                        )}
+
+                        <div className="flex justify-end space-x-3 mt-4">
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                                Cancel
+                            </button>
+                            {googleTokenStatus === 'expired' && (
+                                <a
+                                    href="/api/auth/signout?callbackUrl=/api/auth/signin"
+                                    className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+                                >
+                                    Reconnect Google Account
+                                </a>
+                            )}
+                            <button
+                                onClick={handleSaveToGoogleDrive}
+                                disabled={isLoading || googleTokenStatus === 'expired'}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-colors duration-200"
+                            >
+                                {isLoading ? (
+                                    <span className="flex items-center">
+                                        <Spinner size="sm" className="mr-2" />
+                                        Saving...
+                                    </span>
+                                ) : (
+                                    'Save to Google Drive'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
             </div>
-        </div>
+        </>
     );
 } 
