@@ -1,13 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { LoadingSpinner } from '@/components/ui';
 
 export default function Onboarding() {
-    const { data: session, status } = useSession();
+    const { status } = useSession();
     const router = useRouter();
-    const [step, setStep] = useState(1);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const isProcessing = false; // Using a constant instead of state since it's never updated
 
     useEffect(() => {
         if (status === 'unauthenticated') {
@@ -34,4 +33,4 @@ export default function Onboarding() {
             </div>
         </div>
     );
-} 
+}

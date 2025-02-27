@@ -21,12 +21,11 @@ interface UseApiOptions<T> {
  * Custom hook for data fetching with proper loading, error, and data states
  * 
  * @template T - The expected data type
- * @template E - The expected error type
  * @param {Function} apiFunction - The API function to call
  * @param {UseApiOptions<T>} options - Options for the hook
  * @returns {Object} - An object containing the data, error, loading state, and execute function
  */
-export function useApi<T = any, E = any>(
+export function useApi<T = any>(
     apiFunction: (...args: any[]) => Promise<ApiResponse<T>>,
     options: UseApiOptions<T> = {}
 ) {

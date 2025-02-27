@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 
 interface GmailLabel {
     id: string;
@@ -15,7 +15,6 @@ interface GmailLabelSelectorProps {
 }
 
 export default function GmailLabelSelector({ onLabelsSelected, isOpen, onClose }: GmailLabelSelectorProps) {
-    const { data: session } = useSession();
     const [labels, setLabels] = useState<GmailLabel[]>([]);
     const [selectedLabels, setSelectedLabels] = useState<GmailLabel[]>([]);
     const [isLoading, setIsLoading] = useState(false);

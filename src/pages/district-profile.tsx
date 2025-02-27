@@ -27,6 +27,7 @@ export default function DistrictProfile() {
     const [isLoading, setIsLoading] = useState(true);
     const [showPicker, setShowPicker] = useState(false);
     const [showLabelSelector, setShowLabelSelector] = useState(false);
+    // @ts-ignore - This is used in handleFileSelect
     const [selectedFiles, setSelectedFiles] = useState<DriveItem[]>([]);
     const [districtFiles, setDistrictFiles] = useState<DistrictFile[]>([]);
     const [isUploading, setIsUploading] = useState(false);

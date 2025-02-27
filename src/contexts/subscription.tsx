@@ -1,6 +1,1 @@
-import { UserTier } from '@/types/auth';
-
-interface SubscriptionContextType {
-    currentTier: UserTier; // Changed from SubscriptionTier
-    // ... other properties
-} 
+// This file will be implemented later when subscription functionality is needed 

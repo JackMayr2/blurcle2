@@ -10,6 +10,9 @@ export * from './llm';
 // Export Next Auth types
 export * from './next-auth';
 
+// Export session types
+export * from './session';
+
 // Export database model types
 export * from './models';
 

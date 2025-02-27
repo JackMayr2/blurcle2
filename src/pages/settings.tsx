@@ -2,19 +2,7 @@ import React from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { LoadingSpinner } from '@/components/ui';
-
-interface ExtendedSession {
-    user: {
-        name?: string | null;
-        email?: string | null;
-        image?: string | null;
-        id: string;
-        role?: string | null;
-        tier?: string | null;
-        onboardingComplete?: boolean;
-        organizationName?: string | null;
-    };
-}
+import { ExtendedSession } from '@/types';
 
 export default function Settings() {
     const { data: session, status } = useSession() as { data: ExtendedSession | null, status: string };

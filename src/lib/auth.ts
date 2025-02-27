@@ -50,7 +50,7 @@ export const authOptions: AuthOptions = {
             if (url.startsWith("/")) return new URL(url, baseUrl).toString();
             return baseUrl;
         },
-        async signIn({ user, account, profile }) {
+        async signIn({ user, account }) {
             console.log('SignIn callback - START');
             if (!user.email || !account) {
                 console.log('SignIn callback - No email or account provided');

@@ -4,35 +4,12 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { LoadingSpinner } from '@/components';
 import TwitterConnect from '@/components/TwitterConnect';
-
-interface DistrictInfo {
-    id: string;
-    name: string;
-    contactEmail: string;
-    contactName: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface ExtendedSession {
-    user: {
-        name?: string | null;
-        email?: string | null;
-        image?: string | null;
-        id: string;
-        role?: string | null;
-        tier?: string | null;
-        onboardingComplete?: boolean;
-        organizationName?: string | null;
-    };
-}
+import { ExtendedSession } from '@/types';
 
 export default function DistrictProfile() {
-    const { data: session, status } = useSession();
+    const { data: session, status } = useSession() as { data: ExtendedSession | null, status: string };
     const router = useRouter();
-    const [district, setDistrict] = useState<DistrictInfo | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (status === 'unauthenticated') {
@@ -45,46 +22,8 @@ export default function DistrictProfile() {
         }
     }, [status, router]);
 
-    useEffect(() => {
-        const fetchDistrictInfo = async () => {
-            try {
-                console.log('Fetching district info...');
-                const response = await fetch('/api/district/info', {
-                    credentials: 'include'
-                });
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to fetch district info');
-                }
-
-                console.log('Received district data:', data);
-                setDistrict(data);
-            } catch (error) {
-                console.error('Error fetching district info:', error);
-                setError(error instanceof Error ? error.message : 'An error occurred');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        if (session?.user) {
-            fetchDistrictInfo();
-        }
-    }, [session]);
-
     if (status === 'loading' || isLoading) {
         return <LoadingSpinner />;
-    }
-
-    if (error) {
-        return (
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                    <div className="text-red-700">Error: {error}</div>
-                </div>
-            </div>
-        );
     }
 
     return (

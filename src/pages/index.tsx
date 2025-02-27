@@ -1,13 +1,8 @@
-import { signIn, useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 
 export default function Home() {
-    const { data: session } = useSession();
-    const [isLoaded, setIsLoaded] = useState(false);
-
-    useEffect(() => {
-        setIsLoaded(true);
-    }, []);
+    // We're not using session in this component
+    useSession();
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-blue-50">
