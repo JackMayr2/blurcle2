@@ -16,7 +16,6 @@ export default function DrivePicker({ onSelect }: DrivePickerProps) {
     const [files, setFiles] = useState<DriveItem[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [selectedItems, setSelectedItems] = useState<DriveItem[]>([]);
-    const [currentFolderId, setCurrentFolderId] = useState<string>('root');
     const [folderPath, setFolderPath] = useState<Array<{ id: string; name: string }>>([{ id: 'root', name: 'My Drive' }]);
 
     const fetchFolderContents = async (folderId: string) => {
@@ -60,7 +59,6 @@ export default function DrivePicker({ onSelect }: DrivePickerProps) {
     };
 
     const handleFolderClick = async (folder: DriveItem) => {
-        setCurrentFolderId(folder.id);
         setFolderPath(prev => [...prev, { id: folder.id, name: folder.name }]);
         await fetchFolderContents(folder.id);
     };
@@ -69,7 +67,6 @@ export default function DrivePicker({ onSelect }: DrivePickerProps) {
         const newPath = folderPath.slice(0, index + 1);
         const folderId = newPath[newPath.length - 1].id;
         setFolderPath(newPath);
-        setCurrentFolderId(folderId);
         await fetchFolderContents(folderId);
     };
 
@@ -85,7 +82,6 @@ export default function DrivePicker({ onSelect }: DrivePickerProps) {
     };
 
     const handleFolderDoubleClick = (folder: DriveItem) => {
-        setCurrentFolderId(folder.id);
         setFolderPath(prev => [...prev, { id: folder.id, name: folder.name }]);
         fetchFolderContents(folder.id);
     };
