@@ -193,7 +193,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.json({
                 success: true,
                 results,
-                totalProcessed: results.reduce((sum, result) => sum + result.processedCount, 0),
+                totalProcessed: results.reduce((sum, result) => sum + (result.processedCount ?? 0), 0),
             });
         } catch (error) {
             console.error('Error importing emails:', error);
