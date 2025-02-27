@@ -12,6 +12,7 @@ declare module 'next-auth' {
             tier?: string | null;
             onboardingComplete?: boolean;
             organizationName?: string | null;
+            emailConnected?: boolean;
         }
         accessToken?: string;
     }
@@ -25,6 +26,7 @@ declare module 'next-auth' {
         tier?: string | null;
         onboardingComplete?: boolean;
         organizationName?: string | null;
+        emailConnected?: boolean;
     }
 }
 
@@ -35,6 +37,7 @@ declare module 'next-auth/jwt' {
         tier?: string | null;
         onboardingComplete?: boolean;
         organizationName?: string | null;
+        emailConnected?: boolean;
         accessToken?: string;
     }
 } 

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/router';
-import { LoadingSpinner, DrivePicker } from '@/components';
+import { LoadingSpinner, DrivePicker, GmailLabelSelector } from '@/components';
 import type { DriveItem } from '@/types';
 
 interface DistrictFile {
@@ -13,15 +13,28 @@ interface DistrictFile {
     createdAt: string;
 }
 
+interface GmailLabel {
+    id: string;
+    name: string;
+    type: string;
+    messagesTotal: number;
+}
+
 export default function DistrictProfile() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(true);
     const [showPicker, setShowPicker] = useState(false);
+    const [showLabelSelector, setShowLabelSelector] = useState(false);
     const [selectedFiles, setSelectedFiles] = useState<DriveItem[]>([]);
     const [districtFiles, setDistrictFiles] = useState<DistrictFile[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
+    const [isImportingEmails, setIsImportingEmails] = useState(false);
+    const [importEmailsError, setImportEmailsError] = useState<string | null>(null);
+    const [importEmailsSuccess, setImportEmailsSuccess] = useState<string | null>(null);
+    const [hasGoogleAccount, setHasGoogleAccount] = useState(false);
+    const [hasGmailScope, setHasGmailScope] = useState(false);
 
     // Fetch district files
     const fetchDistrictFiles = async () => {
@@ -37,6 +50,23 @@ export default function DistrictProfile() {
         }
     };
 
+    // Check if user has a Google account
+    const checkGoogleAccount = async () => {
+        try {
+            const response = await fetch('/api/user/check-google-account');
+            if (!response.ok) {
+                throw new Error('Failed to check Google account');
+            }
+            const data = await response.json();
+            setHasGoogleAccount(data.hasGoogleAccount);
+            setHasGmailScope(data.hasGmailScope);
+        } catch (error) {
+            console.error('Error checking Google account:', error);
+            setHasGoogleAccount(false);
+            setHasGmailScope(false);
+        }
+    };
+
     useEffect(() => {
         if (status === 'loading') return;
         if (status === 'unauthenticated') {
@@ -45,6 +75,7 @@ export default function DistrictProfile() {
         }
         setIsLoading(false);
         fetchDistrictFiles();
+        checkGoogleAccount();
     }, [status, router]);
 
     const handleFileSelect = async (items: DriveItem[]) => {
@@ -87,6 +118,51 @@ export default function DistrictProfile() {
         }
     };
 
+    const handleLabelSelect = async (labels: GmailLabel[]) => {
+        if (labels.length === 0) return;
+
+        setIsImportingEmails(true);
+        setImportEmailsError(null);
+        setImportEmailsSuccess(null);
+
+        try {
+            const response = await fetch('/api/gmail/import-emails', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ labels }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                // Check if this is a permissions error
+                if (data.error && (
+                    data.error.includes('Insufficient Permission') ||
+                    data.error.includes('permission') ||
+                    data.error.includes('scope')
+                )) {
+                    setHasGmailScope(false);
+                    throw new Error('Gmail access permission required. Please reconnect your account.');
+                }
+                throw new Error(data.error || 'Failed to import emails');
+            }
+
+            setImportEmailsSuccess(`Successfully imported ${data.totalProcessed} emails from ${labels.length} labels.`);
+
+            // Clear success message after 5 seconds
+            setTimeout(() => {
+                setImportEmailsSuccess(null);
+            }, 5000);
+        } catch (error) {
+            console.error('Error importing emails:', error);
+            setImportEmailsError(error instanceof Error ? error.message : 'Failed to import emails');
+        } finally {
+            setIsImportingEmails(false);
+        }
+    };
+
     if (status === 'loading' || isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -109,8 +185,7 @@ export default function DistrictProfile() {
                     </div>
 
                     <div className="border-t border-gray-200 pt-6">
-                        {/* District Info */}
-                        <dl className="divide-y divide-gray-200 mb-8">
+                        <dl className="divide-y divide-gray-200">
                             <div className="py-4">
                                 <dt className="text-sm font-medium text-gray-500">Email</dt>
                                 <dd className="mt-1 text-sm text-gray-900">{session?.user?.email}</dd>
@@ -119,7 +194,136 @@ export default function DistrictProfile() {
                                 <dt className="text-sm font-medium text-gray-500">Organization</dt>
                                 <dd className="mt-1 text-sm text-gray-900">{session?.user?.organizationName || 'Not set'}</dd>
                             </div>
+                            <div className="py-4 flex items-center">
+                                <dt className="text-sm font-medium text-gray-500 flex items-center">
+                                    <svg className="h-5 w-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+                                    </svg>
+                                    <a href="#" className="text-blue-600 hover:text-blue-800">Connect Google Drive</a>
+                                </dt>
+                            </div>
+                            <div className="py-4 flex items-center">
+                                <dt className="text-sm font-medium text-gray-500 flex items-center">
+                                    <svg className="h-5 w-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+                                    </svg>
+                                    <a href="#" className="text-blue-600 hover:text-blue-800">Connect Instagram</a>
+                                </dt>
+                            </div>
+                            <div className="py-4 flex items-center">
+                                <dt className="text-sm font-medium text-gray-500 flex items-center">
+                                    <svg className="h-5 w-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+                                    </svg>
+                                    <a href="#" className="text-blue-600 hover:text-blue-800">Connect Facebook</a>
+                                </dt>
+                            </div>
+                            <div className="py-4 flex items-center">
+                                <dt className="text-sm font-medium text-gray-500 flex items-center">
+                                    <svg className="h-5 w-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+                                    </svg>
+                                    <a href="#" className="text-blue-600 hover:text-blue-800">Connect X</a>
+                                </dt>
+                            </div>
+                            <div className="py-4 flex items-center">
+                                <dt className="text-sm font-medium text-gray-500 flex items-center">
+                                    <svg className="h-5 w-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                                    </svg>
+                                    {hasGoogleAccount ? (
+                                        <div className="flex items-center">
+                                            <span className="text-green-600 flex items-center">
+                                                <svg className="h-4 w-4 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                </svg>
+                                                Gmail Connected
+                                            </span>
+                                            {hasGmailScope ? (
+                                                <button
+                                                    onClick={() => setShowLabelSelector(true)}
+                                                    className="ml-4 text-sm text-blue-600 hover:text-blue-800"
+                                                >
+                                                    Import Emails
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => signIn('google', {
+                                                        callbackUrl: window.location.href,
+                                                        scope: 'https://mail.google.com/'
+                                                    })}
+                                                    className="ml-4 text-sm text-blue-600 hover:text-blue-800"
+                                                >
+                                                    Reconnect Gmail
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <a
+                                            href="#"
+                                            className="text-blue-600 hover:text-blue-800"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                signIn('google', {
+                                                    callbackUrl: window.location.href,
+                                                    scope: 'https://mail.google.com/'
+                                                });
+                                            }}
+                                        >
+                                            Connect Gmail
+                                        </a>
+                                    )}
+                                </dt>
+                            </div>
                         </dl>
+
+                        {/* Email Import Status */}
+                        {(isImportingEmails || importEmailsError || importEmailsSuccess) && (
+                            <div className="mt-6 border-t border-gray-200 pt-6">
+                                <h3 className="text-lg font-medium text-gray-900 mb-3">Email Import</h3>
+
+                                {isImportingEmails && (
+                                    <div className="flex items-center justify-center py-4 bg-blue-50 rounded-md">
+                                        <svg className="animate-spin h-5 w-5 text-blue-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>Importing emails... This may take a few minutes.</span>
+                                    </div>
+                                )}
+
+                                {importEmailsError && (
+                                    <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                                        <div className="flex">
+                                            <div className="flex-shrink-0">
+                                                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <div className="ml-3">
+                                                <p className="text-sm text-red-700">{importEmailsError}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {importEmailsSuccess && (
+                                    <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                                        <div className="flex">
+                                            <div className="flex-shrink-0">
+                                                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <div className="ml-3">
+                                                <p className="text-sm text-green-700">{importEmailsSuccess}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Google Drive Section */}
                         <div>
@@ -191,31 +395,38 @@ export default function DistrictProfile() {
                                     <p className="mt-2">No files uploaded yet</p>
                                 </div>
                             )}
-
-                            {/* File Picker Modal */}
-                            {showPicker && (
-                                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-                                    <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full">
-                                        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                                            <h2 className="text-lg font-medium">Select Files</h2>
-                                            <button
-                                                onClick={() => setShowPicker(false)}
-                                                className="text-gray-400 hover:text-gray-500"
-                                            >
-                                                <span className="sr-only">Close</span>
-                                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                        <DrivePicker onSelect={handleFileSelect} />
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Gmail Label Selector */}
+            <GmailLabelSelector
+                isOpen={showLabelSelector}
+                onClose={() => setShowLabelSelector(false)}
+                onLabelsSelected={handleLabelSelect}
+            />
+
+            {/* Drive Picker */}
+            {showPicker && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full">
+                        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                            <h2 className="text-lg font-medium">Select Files</h2>
+                            <button
+                                onClick={() => setShowPicker(false)}
+                                className="text-gray-400 hover:text-gray-500"
+                            >
+                                <span className="sr-only">Close</span>
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <DrivePicker onSelect={handleFileSelect} />
+                    </div>
+                </div>
+            )}
         </div>
     );
 } 

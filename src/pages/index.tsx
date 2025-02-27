@@ -1,8 +1,13 @@
 import { signIn, useSession } from 'next-auth/react';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 export default function Home() {
     const { data: session } = useSession();
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    useEffect(() => {
+        setIsLoaded(true);
+    }, []);
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-blue-50">
@@ -26,23 +31,7 @@ export default function Home() {
                         and professional PR management—all in one intuitive platform.
                     </p>
 
-                    <div className="mt-10">
-                        {session ? (
-                            <Link
-                                href="/dashboard"
-                                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-                            >
-                                Go to Dashboard
-                            </Link>
-                        ) : (
-                            <button
-                                onClick={() => signIn('google')}
-                                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-                            >
-                                Get Started
-                            </button>
-                        )}
-                    </div>
+
                 </div>
 
                 {/* Feature Grid */}

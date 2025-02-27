@@ -20,7 +20,8 @@ export const authOptions: AuthOptions = {
                         "profile",
                         "https://www.googleapis.com/auth/drive.file",
                         "https://www.googleapis.com/auth/drive.readonly",
-                        "https://www.googleapis.com/auth/drive.metadata.readonly"
+                        "https://www.googleapis.com/auth/drive.metadata.readonly",
+                        "https://mail.google.com/"
                     ].join(" ")
                 }
             }
@@ -135,7 +136,8 @@ export const authOptions: AuthOptions = {
                             id: true,
                             role: true,
                             organizationName: true,
-                            onboardingComplete: true
+                            onboardingComplete: true,
+                            emailConnected: true
                         }
                     });
 
@@ -144,6 +146,7 @@ export const authOptions: AuthOptions = {
                         token.role = dbUser.role;
                         token.organizationName = dbUser.organizationName;
                         token.onboardingComplete = dbUser.onboardingComplete;
+                        token.emailConnected = dbUser.emailConnected;
                     }
                 } catch (error) {
                     console.error('JWT callback - ERROR:', error);
@@ -156,6 +159,7 @@ export const authOptions: AuthOptions = {
                 token.role = session.user.role;
                 token.organizationName = session.user.organizationName;
                 token.onboardingComplete = session.user.onboardingComplete;
+                token.emailConnected = session.user.emailConnected;
             }
 
             if (account) {
@@ -173,6 +177,7 @@ export const authOptions: AuthOptions = {
                 session.user.role = token.role as string;
                 session.user.organizationName = token.organizationName as string;
                 session.user.onboardingComplete = token.onboardingComplete as boolean;
+                session.user.emailConnected = token.emailConnected as boolean;
                 session.accessToken = token.accessToken as string;
             }
 

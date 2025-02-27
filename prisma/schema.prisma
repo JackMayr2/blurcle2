@@ -47,6 +47,7 @@ model User {
   tier              String?     // 'trial' or 'premium'
   organizationName  String?
   onboardingComplete Boolean    @default(false)
+  emailConnected    Boolean     @default(false)
   createdAt         DateTime    @default(now())
   trialEndsAt       DateTime?
   accounts          Account[]
@@ -55,6 +56,10 @@ model User {
   consultantDistricts District[]  @relation("ConsultantToDistrict")
   // For district reps - their district
   district          District?   @relation("UserToDistrict")
+  // Email connection
+  emailConnection   EmailConnection?
+  // Imported emails
+  emails            Email[]
 }
 
 model VerificationToken {
@@ -91,4 +96,32 @@ model File {
   districtId    String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model EmailConnection {
+  id        String   @id @default(cuid())
+  email     String
+  server    String
+  port      Int
+  password  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Email {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messageId  String   @unique
+  labelId    String
+  labelName  String
+  subject    String
+  from       String
+  to         String
+  body       String   @db.Text
+  receivedAt DateTime
+  createdAt  DateTime @default(now())
+  processed  Boolean  @default(false)
 } 
