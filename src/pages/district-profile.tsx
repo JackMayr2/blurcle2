@@ -4,6 +4,7 @@ import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { LoadingSpinner, DrivePicker, GmailLabelSelector } from '@/components';
 import type { DriveItem } from '@/types';
+import TwitterConnect from '@/components/TwitterConnect';
 
 interface DistrictFile {
     id: string;
@@ -223,7 +224,30 @@ export default function DistrictProfile() {
                                     <svg className="h-5 w-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
                                     </svg>
-                                    <a href="#" className="text-blue-600 hover:text-blue-800">Connect X</a>
+                                    {session?.user?.twitterConnected ? (
+                                        <span className="text-green-600 flex items-center">
+                                            <svg className="h-4 w-4 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                            </svg>
+                                            X Connected
+                                        </span>
+                                    ) : (
+                                        <div className="flex flex-col">
+                                            <a
+                                                href="#twitter-section"
+                                                className="text-blue-600 hover:text-blue-800"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    document.getElementById('twitter-section')?.scrollIntoView({ behavior: 'smooth' });
+                                                }}
+                                            >
+                                                Connect X
+                                            </a>
+                                            <span className="text-xs text-gray-500 mt-1">
+                                                You can also enter a username without logging in
+                                            </span>
+                                        </div>
+                                    )}
                                 </dt>
                             </div>
                             <div className="py-4 flex items-center">
@@ -324,6 +348,16 @@ export default function DistrictProfile() {
                                 )}
                             </div>
                         )}
+
+                        {/* Twitter/X Integration Section */}
+                        <div id="twitter-section" className="mt-8 border-t border-gray-200 pt-6">
+                            <h2 className="text-lg font-medium text-gray-900 mb-4">Twitter/X Integration</h2>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Connect your Twitter/X account to import your tweets and analyze your social media presence.
+                                You can also enter a Twitter username to fetch tweets without logging in.
+                            </p>
+                            <TwitterConnect />
+                        </div>
 
                         {/* Google Drive Section */}
                         <div>

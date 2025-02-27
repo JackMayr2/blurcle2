@@ -2,7 +2,11 @@
 const nextConfig = {
     reactStrictMode: true,
     images: {
-        domains: ['lh3.googleusercontent.com'], // For Google profile images
+        domains: [
+            'lh3.googleusercontent.com', // For Google profile images
+            'pbs.twimg.com',             // For Twitter profile images
+            'abs.twimg.com'              // For Twitter media
+        ],
     },
     experimental: {
         esmExternals: true,

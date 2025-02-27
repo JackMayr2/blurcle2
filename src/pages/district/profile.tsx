@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { LoadingSpinner } from '@/components';
+import TwitterConnect from '@/components/TwitterConnect';
 
 interface DistrictInfo {
     id: string;
@@ -110,6 +111,11 @@ export default function DistrictProfile() {
                                 <dd className="mt-1 text-sm text-gray-900">{session?.user?.organizationName || 'Not set'}</dd>
                             </div>
                         </dl>
+                    </div>
+
+                    {/* Twitter/X Integration Section */}
+                    <div className="mt-8">
+                        <TwitterConnect />
                     </div>
                 </div>
             </div>

@@ -13,6 +13,7 @@ declare module 'next-auth' {
             onboardingComplete?: boolean;
             organizationName?: string | null;
             emailConnected?: boolean;
+            twitterConnected?: boolean;
         }
         accessToken?: string;
     }
@@ -27,6 +28,7 @@ declare module 'next-auth' {
         onboardingComplete?: boolean;
         organizationName?: string | null;
         emailConnected?: boolean;
+        twitterConnected?: boolean;
     }
 }
 
@@ -38,6 +40,7 @@ declare module 'next-auth/jwt' {
         onboardingComplete?: boolean;
         organizationName?: string | null;
         emailConnected?: boolean;
+        twitterConnected?: boolean;
         accessToken?: string;
     }
 } 
