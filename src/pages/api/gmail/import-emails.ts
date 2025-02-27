@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { google } from 'googleapis';
 import { GaxiosError } from 'gaxios';
-import { PrismaClientKnownRequestError } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 interface GmailLabel {
     id: string;
@@ -158,7 +158,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                                 console.error(`Error processing message ${message.id}:`, error);
 
                                 // Don't throw the error, just log it and continue with other messages
-                                if (error instanceof PrismaClientKnownRequestError && error.code === 'P2002') {
+                                if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
                                     console.log(`Message ${message.id} already exists, skipping`);
                                 }
 
