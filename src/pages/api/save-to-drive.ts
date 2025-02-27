@@ -1,8 +1,8 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma'; // Fix the import
+import { authOptions } from './auth/[...nextauth]'; // Ensure path is correct
 import { google } from 'googleapis';
-import { prisma } from '@/lib/prisma';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -162,4 +162,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return res.status(500).json({ error: `Failed to save to Google Drive: ${errorMessage}` });
     }
-} 
+}

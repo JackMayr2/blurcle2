@@ -1,3 +1,5 @@
+import { DefaultSession } from 'next-auth';
+
 // Export auth types
 export * from './auth';
 
@@ -31,4 +33,18 @@ export interface ApiResponse<T = any> {
     success: boolean;
     data?: T;
     error?: string;
-} 
+}
+
+// Extend the default session type
+export interface ExtendedSession extends DefaultSession {
+  user?: {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    role?: string | null;
+    onboardingComplete?: boolean;
+  };
+}
+
+// Add any other types your application needs

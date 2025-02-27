@@ -1,7 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma'; // Fix the import
+import { authOptions } from '@/lib/auth'; // Ensure path is correct
 import { google } from 'googleapis';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -105,4 +105,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             details: error instanceof Error ? error.message : 'Unknown error'
         });
     }
-} 
+}
