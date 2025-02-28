@@ -20,22 +20,54 @@ export const authOptions: AuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
-      // Add user data to session
+    async session({ session, token, user }) {
+      // Handle both token-based and database-based sessions
       if (session.user) {
-        session.user.id = user.id;
-        // Fetch additional user data from database
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id }
-        });
-        if (dbUser) {
-          session.user.role = dbUser.role;
-          session.user.onboardingComplete = dbUser.onboardingComplete;
-          session.user.organizationName = dbUser.organizationName; // Add this line
+        // For database sessions with user object
+        if (user) {
+          session.user.id = user.id;
+          // Fetch additional user data from database
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id }
+          });
+          if (dbUser) {
+            session.user.role = dbUser.role;
+            session.user.onboardingComplete = dbUser.onboardingComplete;
+            session.user.organizationName = dbUser.organizationName;
+          }
+        } 
+        // For JWT sessions with token
+        else if (token) {
+          // Make sure token.sub exists before assigning it
+          if (token.sub) {
+            session.user.id = token.sub;
+          }
+          
+          if (token.email) {
+            // Fetch user data from database using email
+            const dbUser = await prisma.user.findUnique({
+              where: { email: token.email }
+            });
+            
+            if (dbUser) {
+              session.user.id = dbUser.id;
+              session.user.role = dbUser.role;
+              session.user.onboardingComplete = dbUser.onboardingComplete;
+              session.user.organizationName = dbUser.organizationName;
+            }
+          }
         }
       }
+      
       return session;
     },
+    async jwt({ token, user }) {
+      // Add user ID to token when signed in
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    }
   },
   pages: {
     signIn: '/auth/signin',
@@ -44,7 +76,8 @@ export const authOptions: AuthOptions = {
   session: {
     strategy: 'jwt',
   },
-  secret: process.env.NEXTAUTH_SECRET
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
 };
 
 export default NextAuth(authOptions);

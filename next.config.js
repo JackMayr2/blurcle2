@@ -12,6 +12,13 @@ const nextConfig = {
         esmExternals: true,
     },
     pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
+    webpack: (config, { dev }) => {
+        // Disable cache in development to prevent ENOENT errors
+        if (dev) {
+            config.cache = false;
+        }
+        return config;
+    },
     async headers() {
         return [
             {
@@ -27,4 +34,4 @@ const nextConfig = {
     },
 }
 
-module.exports = nextConfig; 
+module.exports = nextConfig;
