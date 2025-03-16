@@ -4,7 +4,13 @@ import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import { LoadingSpinner, DrivePicker, GmailLabelSelector } from '@/components';
 import type { DriveItem } from '@/types';
+import ConnectionCard from '@/components/ConnectionCard';
+import ContentViewModal from '@/components/ContentViewModal';
+import TwitterContent from '@/components/content-views/TwitterContent';
+import GmailContent from '@/components/content-views/GmailContent';
+import DriveContent from '@/components/content-views/DriveContent';
 import TwitterConnect from '@/components/TwitterConnect';
+import { XMarkIcon } from '@heroicons/react/24/solid';
 
 interface DistrictFile {
     id: string;
@@ -21,6 +27,9 @@ interface GmailLabel {
     messagesTotal: number;
 }
 
+// Define service types for better organization
+type ServiceType = 'twitter' | 'gmail' | 'drive' | 'instagram' | 'facebook';
+
 export default function DistrictProfile() {
     const { data: session, status } = useSession();
     const router = useRouter();
@@ -36,6 +45,18 @@ export default function DistrictProfile() {
     const [importEmailsSuccess, setImportEmailsSuccess] = useState<string | null>(null);
     const [hasGoogleAccount, setHasGoogleAccount] = useState(false);
     const [hasGmailScope, setHasGmailScope] = useState(false);
+    const [hasTweets, setHasTweets] = useState(false);
+    const [hasEmails, setHasEmails] = useState(false);
+    const [hasFiles, setHasFiles] = useState(false);
+
+    // State for content modal
+    const [showContentModal, setShowContentModal] = useState(false);
+    const [contentModalTitle, setContentModalTitle] = useState('');
+    const [contentModalService, setContentModalService] = useState<ServiceType | null>(null);
+    const [contentModalError, setContentModalError] = useState<string | null>(null);
+
+    // Add state for Twitter connect modal
+    const [showTwitterConnect, setShowTwitterConnect] = useState(false);
 
     // Fetch district files
     const fetchDistrictFiles = async () => {
@@ -51,32 +72,70 @@ export default function DistrictProfile() {
         }
     };
 
-    // Check if user has a Google account
-    const checkGoogleAccount = async () => {
+    const checkTweets = async () => {
         try {
-            const response = await fetch('/api/user/check-google-account');
-            if (!response.ok) {
-                throw new Error('Failed to check Google account');
+            const response = await fetch('/api/connections/twitter/check-tweets');
+            if (response.ok) {
+                const data = await response.json();
+                setHasTweets(data.hasTweets);
             }
-            const data = await response.json();
-            setHasGoogleAccount(data.hasGoogleAccount);
-            setHasGmailScope(data.hasGmailScope);
         } catch (error) {
-            console.error('Error checking Google account:', error);
-            setHasGoogleAccount(false);
-            setHasGmailScope(false);
+            console.error('Error checking tweets:', error);
+        }
+    };
+
+    const checkEmails = async () => {
+        try {
+            const response = await fetch('/api/connections/gmail/check-emails');
+            if (response.ok) {
+                const data = await response.json();
+                setHasEmails(data.hasEmails);
+            }
+        } catch (error) {
+            console.error('Error checking emails:', error);
+        }
+    };
+
+    const checkFiles = async () => {
+        try {
+            const response = await fetch('/api/connections/drive/check-files');
+            if (response.ok) {
+                const data = await response.json();
+                setHasFiles(data.hasFiles);
+            }
+        } catch (error) {
+            console.error('Error checking files:', error);
         }
     };
 
     useEffect(() => {
-        if (status === 'loading') return;
         if (status === 'unauthenticated') {
             router.push('/auth/signin');
             return;
         }
-        setIsLoading(false);
-        fetchDistrictFiles();
-        checkGoogleAccount();
+
+        if (status === 'authenticated') {
+            // Check if user has Google account connected
+            const checkGoogleAccount = async () => {
+                try {
+                    const response = await fetch('/api/auth/check-google-account');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setHasGoogleAccount(data.hasGoogleAccount);
+                        setHasGmailScope(data.hasGmailScope);
+                    }
+                } catch (error) {
+                    console.error('Error checking Google account:', error);
+                }
+            };
+
+            checkGoogleAccount();
+            fetchDistrictFiles();
+            checkTweets();
+            checkEmails();
+            checkFiles();
+            setIsLoading(false);
+        }
     }, [status, router]);
 
     const handleFileSelect = async (items: DriveItem[]) => {
@@ -120,13 +179,17 @@ export default function DistrictProfile() {
     };
 
     const handleLabelSelect = async (labels: GmailLabel[]) => {
-        if (labels.length === 0) return;
+        setShowLabelSelector(false);
 
-        setIsImportingEmails(true);
-        setImportEmailsError(null);
-        setImportEmailsSuccess(null);
+        if (labels.length === 0) {
+            return;
+        }
 
         try {
+            setIsImportingEmails(true);
+            setImportEmailsError(null);
+            setImportEmailsSuccess(null);
+
             const response = await fetch('/api/gmail/import-emails', {
                 method: 'POST',
                 headers: {
@@ -135,21 +198,12 @@ export default function DistrictProfile() {
                 body: JSON.stringify({ labels }),
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
-                // Check if this is a permissions error
-                if (data.error && (
-                    data.error.includes('Insufficient Permission') ||
-                    data.error.includes('permission') ||
-                    data.error.includes('scope')
-                )) {
-                    setHasGmailScope(false);
-                    throw new Error('Gmail access permission required. Please reconnect your account.');
-                }
+                const data = await response.json();
                 throw new Error(data.error || 'Failed to import emails');
             }
 
+            const data = await response.json();
             setImportEmailsSuccess(`Successfully imported ${data.totalProcessed} emails from ${labels.length} labels.`);
 
             // Clear success message after 5 seconds
@@ -161,6 +215,74 @@ export default function DistrictProfile() {
             setImportEmailsError(error instanceof Error ? error.message : 'Failed to import emails');
         } finally {
             setIsImportingEmails(false);
+        }
+    };
+
+    // Function to handle disconnecting a service
+    const handleDisconnectService = async (service: ServiceType) => {
+        try {
+            const response = await fetch(`/api/connections/${service}/disconnect`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || `Failed to disconnect ${service}`);
+            }
+
+            // Update state based on service
+            if (service === 'twitter') {
+                // Update session to reflect disconnected Twitter
+                router.reload();
+            } else if (service === 'gmail') {
+                setHasGmailScope(false);
+            } else if (service === 'drive') {
+                // Refresh files list
+                setDistrictFiles([]);
+            }
+        } catch (error) {
+            console.error(`Error disconnecting ${service}:`, error);
+            alert(`Failed to disconnect ${service}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    };
+
+    // Function to handle viewing content
+    const handleViewContent = (service: ServiceType, title: string) => {
+        setContentModalTitle(title);
+        setContentModalService(service);
+        setContentModalError(null); // Reset any previous errors
+        setShowContentModal(true);
+    };
+
+    // Function to handle connecting Gmail
+    const handleConnectGmail = async () => {
+        if (hasGoogleAccount) {
+            // If we already have a Google account, just need to add Gmail scope
+            signIn('google', {
+                callbackUrl: window.location.href,
+                scope: 'https://mail.google.com/'
+            });
+        } else {
+            // Need to connect Google account first
+            signIn('google', {
+                callbackUrl: window.location.href,
+                scope: 'https://mail.google.com/'
+            });
+        }
+    };
+
+    // Function to handle updating content
+    const handleUpdateService = (service: ServiceType) => {
+        if (service === 'twitter') {
+            // Instead of scrolling to a section, show a modal or dialog for Twitter connection
+            setShowTwitterConnect(true);
+        } else if (service === 'gmail') {
+            setShowLabelSelector(true);
+        } else if (service === 'drive') {
+            setShowPicker(true);
         }
     };
 
@@ -195,242 +317,134 @@ export default function DistrictProfile() {
                                 <dt className="text-sm font-medium text-gray-500">Organization</dt>
                                 <dd className="mt-1 text-sm text-gray-900">{session?.user?.organizationName || 'Not set'}</dd>
                             </div>
-                            <div className="py-4 flex items-center">
-                                <dt className="text-sm font-medium text-gray-500 flex items-center">
-                                    <svg className="h-5 w-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
-                                    </svg>
-                                    <a href="#" className="text-blue-600 hover:text-blue-800">Connect Google Drive</a>
-                                </dt>
-                            </div>
-                            <div className="py-4 flex items-center">
-                                <dt className="text-sm font-medium text-gray-500 flex items-center">
-                                    <svg className="h-5 w-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
-                                    </svg>
-                                    <a href="#" className="text-blue-600 hover:text-blue-800">Connect Instagram</a>
-                                </dt>
-                            </div>
-                            <div className="py-4 flex items-center">
-                                <dt className="text-sm font-medium text-gray-500 flex items-center">
-                                    <svg className="h-5 w-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
-                                    </svg>
-                                    <a href="#" className="text-blue-600 hover:text-blue-800">Connect Facebook</a>
-                                </dt>
-                            </div>
-                            <div className="py-4 flex items-center">
-                                <dt className="text-sm font-medium text-gray-500 flex items-center">
-                                    <svg className="h-5 w-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
-                                    </svg>
-                                    {session?.user?.twitterConnected ? (
-                                        <span className="text-green-600 flex items-center">
-                                            <svg className="h-4 w-4 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                            </svg>
-                                            X Connected
-                                        </span>
-                                    ) : (
-                                        <div className="flex flex-col">
-                                            <a
-                                                href="#twitter-section"
-                                                className="text-blue-600 hover:text-blue-800"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    document.getElementById('twitter-section')?.scrollIntoView({ behavior: 'smooth' });
-                                                }}
-                                            >
-                                                Connect X
-                                            </a>
-                                            <span className="text-xs text-gray-500 mt-1">
-                                                You can also enter a username without logging in
-                                            </span>
-                                        </div>
-                                    )}
-                                </dt>
-                            </div>
-                            <div className="py-4 flex items-center">
-                                <dt className="text-sm font-medium text-gray-500 flex items-center">
-                                    <svg className="h-5 w-5 text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                                    </svg>
-                                    {hasGoogleAccount ? (
-                                        <div className="flex items-center">
-                                            <span className="text-green-600 flex items-center">
-                                                <svg className="h-4 w-4 text-green-500 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                </svg>
-                                                Gmail Connected
-                                            </span>
-                                            {hasGmailScope ? (
-                                                <button
-                                                    onClick={() => setShowLabelSelector(true)}
-                                                    className="ml-4 text-sm text-blue-600 hover:text-blue-800"
-                                                >
-                                                    Import Emails
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => signIn('google', {
-                                                        callbackUrl: window.location.href,
-                                                        scope: 'https://mail.google.com/'
-                                                    })}
-                                                    className="ml-4 text-sm text-blue-600 hover:text-blue-800"
-                                                >
-                                                    Reconnect Gmail
-                                                </button>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <a
-                                            href="#"
-                                            className="text-blue-600 hover:text-blue-800"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                signIn('google', {
-                                                    callbackUrl: window.location.href,
-                                                    scope: 'https://mail.google.com/'
-                                                });
-                                            }}
-                                        >
-                                            Connect Gmail
-                                        </a>
-                                    )}
-                                </dt>
-                            </div>
                         </dl>
+                    </div>
 
-                        {/* Email Import Status */}
-                        {(isImportingEmails || importEmailsError || importEmailsSuccess) && (
-                            <div className="mt-6 border-t border-gray-200 pt-6">
-                                <h3 className="text-lg font-medium text-gray-900 mb-3">Email Import</h3>
-
-                                {isImportingEmails && (
-                                    <div className="flex items-center justify-center py-4 bg-blue-50 rounded-md">
-                                        <svg className="animate-spin h-5 w-5 text-blue-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        <span>Importing emails... This may take a few minutes.</span>
-                                    </div>
-                                )}
-
-                                {importEmailsError && (
-                                    <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                                        <div className="flex">
-                                            <div className="flex-shrink-0">
-                                                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                            <div className="ml-3">
-                                                <p className="text-sm text-red-700">{importEmailsError}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {importEmailsSuccess && (
-                                    <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                                        <div className="flex">
-                                            <div className="flex-shrink-0">
-                                                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                            <div className="ml-3">
-                                                <p className="text-sm text-green-700">{importEmailsSuccess}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Twitter/X Integration Section */}
-                        <div id="twitter-section" className="mt-8 border-t border-gray-200 pt-6">
-                            <h2 className="text-lg font-medium text-gray-900 mb-4">Twitter/X Integration</h2>
-                            <p className="text-sm text-gray-600 mb-4">
-                                Connect your Twitter/X account to import your tweets and analyze your social media presence.
-                                You can also enter a Twitter username to fetch tweets without logging in.
-                            </p>
-                            <TwitterConnect />
-                        </div>
-
-                        {/* Google Drive Section */}
-                        <div>
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-lg font-medium text-gray-900">District Files</h2>
-                                <button
-                                    onClick={() => setShowPicker(true)}
-                                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                                >
-                                    <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                    {/* Connections Section */}
+                    <div className="mt-8">
+                        <h2 className="text-xl font-semibold text-gray-900 mb-6">Connected Services</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Twitter Connection */}
+                            <ConnectionCard
+                                title="Twitter / X"
+                                isConnected={!!session?.user?.twitterConnected}
+                                icon={
+                                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                                     </svg>
-                                    Add Files
-                                </button>
-                            </div>
+                                }
+                                description="Connect your Twitter account to import and analyze tweets."
+                                onConnect={() => setShowTwitterConnect(true)}
+                                onDisconnect={() => handleDisconnectService('twitter')}
+                                onUpdate={() => handleUpdateService('twitter')}
+                                onViewContent={hasTweets ? () => handleViewContent('twitter', 'Twitter Content') : undefined}
+                            />
 
-                            {isUploading && (
-                                <div className="flex items-center justify-center py-4">
-                                    <LoadingSpinner />
-                                    <span className="ml-2 text-sm text-gray-600">Uploading files...</span>
+                            {/* Gmail Connection */}
+                            <ConnectionCard
+                                title="Gmail"
+                                isConnected={hasGoogleAccount && hasGmailScope}
+                                icon={
+                                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" />
+                                    </svg>
+                                }
+                                description="Import and analyze emails from your Gmail account."
+                                onConnect={handleConnectGmail}
+                                onDisconnect={() => handleDisconnectService('gmail')}
+                                onUpdate={() => handleUpdateService('gmail')}
+                                onViewContent={hasEmails ? () => handleViewContent('gmail', 'Gmail Content') : undefined}
+                                additionalInfo={
+                                    importEmailsError && (
+                                        <div className="mt-2 text-sm text-red-600">
+                                            Error: {importEmailsError}
+                                        </div>
+                                    )
+                                }
+                            />
+
+                            {/* Google Drive Connection */}
+                            <ConnectionCard
+                                title="Google Drive"
+                                isConnected={hasGoogleAccount}
+                                icon={
+                                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12.75 13.81v7.44a.75.75 0 0 1-1.5 0v-7.44H2.7a.75.75 0 0 1-.65-1.13l3.6-6.43-3.44-6.13A.75.75 0 0 1 2.84 0h8.41v13.81h1.5zM11.25 0v13.81h-1.5V0h1.5zm2.84 0a.75.75 0 0 1 .65 1.13l-3.6 6.43 3.44 6.13a.75.75 0 0 1-.65 1.13H5.55l4.23-7.56L5.55 0h8.54z" />
+                                    </svg>
+                                }
+                                description="Connect your Google Drive to import and manage files."
+                                onConnect={() => setShowPicker(true)}
+                                onDisconnect={() => handleDisconnectService('drive')}
+                                onUpdate={() => handleUpdateService('drive')}
+                                onViewContent={hasFiles ? () => handleViewContent('drive', 'Google Drive Content') : undefined}
+                                additionalInfo={
+                                    uploadError && (
+                                        <div className="mt-2 text-sm text-red-600">
+                                            Error: {uploadError}
+                                        </div>
+                                    )
+                                }
+                            />
+
+                            {/* Instagram Connection - Placeholder */}
+                            <ConnectionCard
+                                title="Instagram"
+                                isConnected={false}
+                                icon={
+                                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                                    </svg>
+                                }
+                                description="Connect your Instagram account to import and analyze posts."
+                                onConnect={() => alert('Instagram integration coming soon!')}
+                            />
+
+                            {/* Facebook Connection - Placeholder */}
+                            <ConnectionCard
+                                title="Facebook"
+                                isConnected={false}
+                                icon={
+                                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                                    </svg>
+                                }
+                                description="Connect your Facebook account to import and analyze posts."
+                                onConnect={() => alert('Facebook integration coming soon!')}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Email Import Status */}
+                    {(isImportingEmails || importEmailsSuccess) && (
+                        <div className="mt-6 border-t border-gray-200 pt-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-3">Email Import</h3>
+
+                            {isImportingEmails && (
+                                <div className="flex items-center justify-center py-4 bg-blue-50 rounded-md">
+                                    <svg className="animate-spin h-5 w-5 text-blue-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Importing emails... This may take a few minutes.</span>
                                 </div>
                             )}
 
-                            {uploadError && (
-                                <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+                            {importEmailsSuccess && (
+                                <div className="bg-green-50 border border-green-200 rounded-md p-4">
                                     <div className="flex">
                                         <div className="flex-shrink-0">
-                                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                             </svg>
                                         </div>
                                         <div className="ml-3">
-                                            <p className="text-sm text-red-700">{uploadError}</p>
+                                            <p className="text-sm text-green-700">{importEmailsSuccess}</p>
                                         </div>
                                     </div>
                                 </div>
                             )}
-
-                            {/* District Files List */}
-                            {districtFiles.length > 0 ? (
-                                <div className="mt-4">
-                                    <h3 className="text-sm font-medium text-gray-900 mb-3">Your Files</h3>
-                                    <ul className="divide-y divide-gray-200 border-t border-b">
-                                        {districtFiles.map((file) => (
-                                            <li key={file.id} className="py-3 flex items-center justify-between">
-                                                <div className="flex items-center">
-                                                    <svg className="h-5 w-5 text-gray-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
-                                                    </svg>
-                                                    <span className="text-sm text-gray-900">{file.name}</span>
-                                                </div>
-                                                <a
-                                                    href={`https://drive.google.com/file/d/${file.googleDriveId}/view`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-sm text-blue-600 hover:text-blue-800"
-                                                >
-                                                    View in Drive
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ) : (
-                                <div className="text-center py-12 text-gray-500">
-                                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                    </svg>
-                                    <p className="mt-2">No files uploaded yet</p>
-                                </div>
-                            )}
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
@@ -458,6 +472,64 @@ export default function DistrictProfile() {
                             </button>
                         </div>
                         <DrivePicker onSelect={handleFileSelect} />
+                    </div>
+                </div>
+            )}
+
+            {/* Content View Modal */}
+            <ContentViewModal
+                isOpen={showContentModal}
+                onClose={() => setShowContentModal(false)}
+                title={contentModalTitle}
+            >
+                {contentModalService === 'twitter' && (
+                    <TwitterContent onError={setContentModalError} />
+                )}
+                {contentModalService === 'gmail' && (
+                    <GmailContent onError={setContentModalError} />
+                )}
+                {contentModalService === 'drive' && (
+                    <DriveContent onError={setContentModalError} />
+                )}
+                {contentModalError && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-4 mt-4">
+                        <div className="flex">
+                            <div className="flex-shrink-0">
+                                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414-1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div className="ml-3">
+                                <p className="text-sm text-red-700">{contentModalError}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </ContentViewModal>
+
+            {/* Twitter Connect Modal */}
+            {showTwitterConnect && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full">
+                        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                            <h2 className="text-lg font-medium">Twitter/X Integration</h2>
+                            <button
+                                onClick={() => setShowTwitterConnect(false)}
+                                className="text-gray-400 hover:text-gray-500"
+                            >
+                                <span className="sr-only">Close</span>
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-sm text-gray-600 mb-4">
+                                Connect your Twitter/X account to import your tweets and analyze your social media presence.
+                                You can also enter a Twitter username to fetch tweets without logging in.
+                            </p>
+                            <TwitterConnect />
+                        </div>
                     </div>
                 </div>
             )}
